@@ -6,22 +6,13 @@ const ProductCard = ({ producto }) => {
     return producto.precio;
   };
 
-  const obtenerRutaImagen = () => {
-    const nombreArchivo = producto.imagen.split('/').pop();
-    const basePath = import.meta.env.BASE_URL || '/';
-    return `${basePath}assets/img/${nombreArchivo}`;
-  };
-
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
       <div className="relative">
         <img 
-          src={obtenerRutaImagen()} 
+          src={producto.imagen} 
           alt={producto.nombre}
           className="w-full h-48 object-cover"
-          onError={(e) => {
-            e.target.src = `https://via.placeholder.com/300x200/808080/FFFFFF?text=${producto.nombre}`;
-          }}
         />
         {producto.oferta && (
           <span className="absolute top-2 right-2 bg-red-600 text-white px-2 py-1 rounded text-xs font-bold">

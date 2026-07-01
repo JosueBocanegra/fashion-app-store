@@ -9,7 +9,7 @@ import NotFound from './pages/NotFound';
 
 function App() {
   return (
-    <Router basename="/fashion-store-react">
+    <Router>
       <div className="min-h-screen flex flex-col bg-gray-50">
         <Navbar />
         <main className="flex-grow">
