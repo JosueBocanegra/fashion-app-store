@@ -8,8 +8,6 @@ const ProductCard = ({ producto }) => {
 
   const obtenerRutaImagen = () => {
     const nombreArchivo = producto.imagen.split('/').pop();
-    // En desarrollo: /assets/img/nombre.jpg
-    // En producción (GitHub Pages): /fashion-store-react/assets/img/nombre.jpg
     const basePath = import.meta.env.BASE_URL || '/';
     return `${basePath}assets/img/${nombreArchivo}`;
   };
