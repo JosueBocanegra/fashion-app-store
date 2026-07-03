@@ -217,7 +217,7 @@ const Contacto = () => {
                     value={formData.email}
                     onChange={handleChange}
                     onBlur={handleBlur}
-                    placeholder="tu@email.com"
+                    placeholder="tucorreo@email.com"
                     className={`w-full px-4 py-2.5 border rounded-xl focus:outline-none focus:ring-2 transition ${obtenerClaseInput("email")}`}
                   />
                   {tocados.email && errores.email && (
