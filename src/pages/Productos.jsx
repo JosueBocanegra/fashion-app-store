@@ -1,16 +1,37 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { productosService } from '../services/productosService';
 import ProductCard from '../components/ProductCard';
-import { Filter, X, Tag, Grid3X3 } from 'lucide-react';
+import { Filter, X, Tag } from 'lucide-react';
 
 const Productos = () => {
+  // --- PARÁMETROS DE BÚSQUEDA URL ---
+  const [searchParams] = useSearchParams();
+  const categoriaURL = searchParams.get("categoria");
+
+  // --- ESTADOS ---
   const [productos, setProductos] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filtroCategoria, setFiltroCategoria] = useState('todos');
+  const [filtroCategoria, setFiltroCategoria] = useState(categoriaURL || 'todos');
   const [filtroOferta, setFiltroOferta] = useState(false);
 
+  // Efecto para sincronizar el estado cuando cambia la URL y hacer scroll al inicio
+  useEffect(() => {
+    const categoria = searchParams.get("categoria");
+    if (categoria) {
+      setFiltroCategoria(categoria);
+    } else {
+      setFiltroCategoria('todos');
+    }
+    
+    // Desplazamiento elegante hacia arriba al cambiar de categoría en la URL
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [searchParams]);
+
+  // Efecto principal para cargar los productos basados en los filtros actuales
   useEffect(() => {
     const cargarProductos = async () => {
+      setLoading(true);
       try {
         let data;
         if (filtroCategoria !== 'todos') {
@@ -53,7 +74,7 @@ const Productos = () => {
         </div>
       </div>
       
-      {/* Filtros mejorados */}
+      {/* Filtros */}
       <div className="bg-white rounded-2xl shadow-lg p-5 mb-8 border border-slate-100">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2 text-slate-700 font-medium">
@@ -65,7 +86,7 @@ const Productos = () => {
             <select 
               value={filtroCategoria}
               onChange={(e) => setFiltroCategoria(e.target.value)}
-              className="px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 bg-slate-50 text-sm"
+              className="px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 bg-slate-50 text-sm cursor-pointer"
             >
               <option value="todos">Todos ({getCategoriaCount('todos')})</option>
               <option value="Hombre">Hombre ({getCategoriaCount('Hombre')})</option>
@@ -91,7 +112,7 @@ const Productos = () => {
               setFiltroCategoria('todos');
               setFiltroOferta(false);
             }}
-            className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-purple-600 hover:bg-purple-50 px-4 py-2 rounded-xl transition-colors ml-auto"
+            className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-purple-600 hover:bg-purple-50 px-4 py-2 rounded-xl transition-colors ml-auto cursor-pointer"
           >
             <X className="w-4 h-4" />
             Limpiar filtros
@@ -107,7 +128,7 @@ const Productos = () => {
                 {filtroCategoria}
                 <button 
                   onClick={() => setFiltroCategoria('todos')}
-                  className="hover:text-purple-900"
+                  className="hover:text-purple-900 cursor-pointer"
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -118,7 +139,7 @@ const Productos = () => {
                 Ofertas
                 <button 
                   onClick={() => setFiltroOferta(false)}
-                  className="hover:text-green-900"
+                  className="hover:text-green-900 cursor-pointer"
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -138,7 +159,6 @@ const Productos = () => {
         <>
           {productos.length === 0 ? (
             <div className="text-center py-16 bg-white rounded-2xl shadow-lg border border-slate-100">
-              <div className="text-6xl mb-4"></div>
               <p className="text-slate-500 text-xl font-medium">No se encontraron productos</p>
               <p className="text-slate-400 text-sm mt-1">Prueba con otros filtros</p>
               <button 
@@ -146,7 +166,7 @@ const Productos = () => {
                   setFiltroCategoria('todos');
                   setFiltroOferta(false);
                 }}
-                className="mt-4 text-purple-600 hover:text-purple-800 font-medium text-sm"
+                className="mt-4 text-purple-600 hover:text-purple-800 font-medium text-sm cursor-pointer"
               >
                 Limpiar filtros
               </button>
@@ -165,5 +185,3 @@ const Productos = () => {
 };
 
 export default Productos;
-
-
