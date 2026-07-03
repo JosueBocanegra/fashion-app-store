@@ -179,7 +179,7 @@ const Contacto = () => {
               
               {enviado && (
                 <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl mb-4 flex items-center gap-2">
-                  ✅ ¡Mensaje enviado correctamente!
+                  ¡Mensaje enviado correctamente!
                 </div>
               )}
 
