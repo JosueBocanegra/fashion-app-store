@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { productosService } from '../services/productosService';
 import ProductCard from '../components/ProductCard';
@@ -10,40 +10,25 @@ const Productos = () => {
   const categoriaURL = searchParams.get("categoria");
 
   // --- ESTADOS ---
-  const [productos, setProductos] = useState([]);
+  const [productos, setProductos] = useState([]); // Guarda el catálogo maestro original
   const [loading, setLoading] = useState(true);
   const [filtroCategoria, setFiltroCategoria] = useState(categoriaURL || 'todos');
   const [filtroOferta, setFiltroOferta] = useState(false);
 
-  // Efecto para sincronizar el estado cuando cambia la URL y hacer scroll al inicio
+  // Efecto para sincronizar el estado cuando cambia la URL y desplazar suavemente hacia arriba
   useEffect(() => {
     const categoria = searchParams.get("categoria");
-    if (categoria) {
-      setFiltroCategoria(categoria);
-    } else {
-      setFiltroCategoria('todos');
-    }
+    setFiltroCategoria(categoria || 'todos');
     
-    // Desplazamiento elegante hacia arriba al cambiar de categoría en la URL
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [searchParams]);
 
-  // Efecto principal para cargar los productos basados en los filtros actuales
+  // Cargamos todos los productos de la tienda una sola vez al montar el componente
   useEffect(() => {
     const cargarProductos = async () => {
       setLoading(true);
       try {
-        let data;
-        if (filtroCategoria !== 'todos') {
-          data = await productosService.obtenerProductosPorCategoria(filtroCategoria);
-        } else {
-          data = await productosService.obtenerProductos();
-        }
-        
-        if (filtroOferta) {
-          data = data.filter(p => p.oferta === true);
-        }
-        
+        const data = await productosService.obtenerProductos();
         setProductos(data);
       } catch (error) {
         console.error('Error al cargar productos:', error);
@@ -52,9 +37,20 @@ const Productos = () => {
       }
     };
     cargarProductos();
-  }, [filtroCategoria, filtroOferta]);
+  }, []);
 
-  // Contar productos por categoría para mostrar en el filtro
+  // --- FILTRADO DINÁMICO CLIENT-SIDE (useMemo) ---
+  // Filtra en tiempo real basándose en el estado sin destruir ni mutar el array original de productos
+  const productosFiltrados = useMemo(() => {
+    return productos.filter(producto => {
+      const cumpleCategoria = filtroCategoria === 'todos' || producto.categoria === filtroCategoria;
+      const cumpleOferta = !filtroOferta || producto.oferta === true;
+      return cumpleCategoria && cumpleOferta;
+    });
+  }, [productos, filtroCategoria, filtroOferta]);
+
+  // --- CONTADOR ESTABLE DE CATEGORÍAS ---
+  // Siempre lee del catálogo maestro (`productos`), asegurando que los contadores del selector no cambien a 0
   const getCategoriaCount = (categoria) => {
     if (categoria === 'todos') return productos.length;
     return productos.filter(p => p.categoria === categoria).length;
@@ -69,7 +65,7 @@ const Productos = () => {
             Nuestros Productos
           </h1>
           <p className="text-slate-500 text-sm mt-1">
-            {productos.length} productos disponibles
+            {productosFiltrados.length} productos mostrados
           </p>
         </div>
       </div>
@@ -157,7 +153,7 @@ const Productos = () => {
         </div>
       ) : (
         <>
-          {productos.length === 0 ? (
+          {productosFiltrados.length === 0 ? (
             <div className="text-center py-16 bg-white rounded-2xl shadow-lg border border-slate-100">
               <p className="text-slate-500 text-xl font-medium">No se encontraron productos</p>
               <p className="text-slate-400 text-sm mt-1">Prueba con otros filtros</p>
@@ -173,7 +169,7 @@ const Productos = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {productos.map(producto => (
+              {productosFiltrados.map(producto => (
                 <ProductCard key={producto.id} producto={producto} />
               ))}
             </div>
