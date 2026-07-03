@@ -25,7 +25,7 @@ const Home = () => {
       } catch (error) {
         console.error('Error al cargar productos destacados:', error);
       } finally {
-        setLoading(false); // Corregido: antes decía loading(false)
+        setLoading(false);
       }
     };
     cargarProductos();
