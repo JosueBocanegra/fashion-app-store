@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { productosService } from '../services/productosService';
+import { Link } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { 
   ShoppingBag, 
@@ -24,7 +25,7 @@ const Home = () => {
       } catch (error) {
         console.error('Error al cargar productos destacados:', error);
       } finally {
-        setLoading(false);
+        loading(false);
       }
     };
     cargarProductos();
@@ -58,20 +59,20 @@ const Home = () => {
             </p>
             
             <div className="flex flex-wrap gap-4">
-              <a 
-                href="/productos" 
+              <Link 
+                to="/productos" 
                 className="inline-flex items-center gap-2 bg-white text-purple-900 px-8 py-3 rounded-full font-semibold hover:bg-gray-100 transition-all duration-300 hover:scale-105 hover:shadow-xl cursor-pointer"
               >
                 <ShoppingBag className="w-5 h-5" />
                 Ver Productos
                 <ArrowRight className="w-4 h-4" />
-              </a>
-              <a 
-                href="/about" 
+              </Link>
+              <Link 
+                to="/about" 
                 className="inline-flex items-center gap-2 border border-white/30 text-white px-8 py-3 rounded-full font-semibold hover:bg-white/10 transition-all duration-300 hover:scale-105 cursor-pointer"
               >
                 Conócenos
-              </a>
+              </Link>
             </div>
 
             <div className="flex gap-8 pt-4">
@@ -110,13 +111,13 @@ const Home = () => {
             <TrendingUp className="w-8 h-8 text-purple-600" />
             Productos en Oferta
           </h2>
-          <a 
-            href="/productos" 
+          <Link 
+            to="/productos" 
             className="inline-flex items-center gap-1 text-purple-600 hover:text-purple-800 font-semibold hover:underline cursor-pointer"
           >
             Ver todos
             <ArrowRight className="w-4 h-4" />
-          </a>
+          </Link>
         </div>
         
         {loading ? (
@@ -132,14 +133,19 @@ const Home = () => {
         )}
       </section>
 
-      {/* Categorías */}
+      {/* Categorías con enlaces dinámicos */}
       <section className="mb-12">
         <h2 className="text-3xl font-bold text-slate-800 mb-6 flex items-center gap-2">
           <Star className="w-8 h-8 text-purple-600" />
           Categorías
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="group relative h-72 rounded-2xl overflow-hidden shadow-xl cursor-pointer">
+          
+          {/* Tarjeta Hombre */}
+          <Link
+            to="/productos?categoria=Hombre"
+            className="group relative h-72 rounded-2xl overflow-hidden shadow-xl cursor-pointer"
+          >
             <img 
               src="assets/img/categoriaHombre.jpg"
               alt="Hombre"
@@ -149,14 +155,18 @@ const Home = () => {
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <h3 className="text-4xl font-bold text-white mb-2">Hombre</h3>
               <p className="text-white/70 text-sm">Descubre la colección</p>
-              <span className="mt-4 inline-flex items-center gap-2 border-2 border-white/50 text-white px-6 py-2 rounded-full text-sm font-semibold group-hover:bg-white group-hover:text-purple-900 transition-all duration-300 cursor-pointer">
+              <span className="mt-4 inline-flex items-center gap-2 border-2 border-white/50 text-white px-6 py-2 rounded-full text-sm font-semibold group-hover:bg-white group-hover:text-purple-900 transition-all duration-300">
                 Ver más
                 <ArrowRight className="w-4 h-4" />
               </span>
             </div>
-          </div>
+          </Link>
 
-          <div className="group relative h-72 rounded-2xl overflow-hidden shadow-xl cursor-pointer">
+          {/* Tarjeta Mujer */}
+          <Link
+            to="/productos?categoria=Mujer"
+            className="group relative h-72 rounded-2xl overflow-hidden shadow-xl cursor-pointer"
+          >
             <img 
               src="assets/img/categoriaMujer.jpg"
               alt="Mujer"
@@ -166,12 +176,13 @@ const Home = () => {
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <h3 className="text-4xl font-bold text-white mb-2">Mujer</h3>
               <p className="text-white/70 text-sm">Descubre la colección</p>
-              <span className="mt-4 inline-flex items-center gap-2 border-2 border-white/50 text-white px-6 py-2 rounded-full text-sm font-semibold group-hover:bg-white group-hover:text-purple-900 transition-all duration-300 cursor-pointer">
+              <span className="mt-4 inline-flex items-center gap-2 border-2 border-white/50 text-white px-6 py-2 rounded-full text-sm font-semibold group-hover:bg-white group-hover:text-purple-900 transition-all duration-300">
                 Ver más
                 <ArrowRight className="w-4 h-4" />
               </span>
             </div>
-          </div>
+          </Link>
+
         </div>
       </section>
 
@@ -208,5 +219,3 @@ const Home = () => {
 };
 
 export default Home;
-
-
