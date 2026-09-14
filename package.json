@@ -8,8 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "server": "json-server --watch db.json --port 5000",
-    "dev:full": "npm run server & npm run dev",
-    "deploy": "npm run build && gh-pages -d dist"
+    "dev:full": "npm run server & npm run dev"
   },
   "dependencies": {
     "react": "^19.2.7",
