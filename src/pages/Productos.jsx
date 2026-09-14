@@ -5,17 +5,14 @@ import ProductCard from '../components/ProductCard';
 import { Filter, X, Tag } from 'lucide-react';
 
 const Productos = () => {
-  // --- PARÁMETROS DE BÚSQUEDA URL ---
   const [searchParams] = useSearchParams();
   const categoriaURL = searchParams.get("categoria");
 
-  // --- ESTADOS ---
-  const [productos, setProductos] = useState([]); // Guarda el catálogo maestro original
+  const [productos, setProductos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filtroCategoria, setFiltroCategoria] = useState(categoriaURL || 'todos');
   const [filtroOferta, setFiltroOferta] = useState(false);
 
-  // Efecto para sincronizar el estado cuando cambia la URL y desplazar suavemente hacia arriba
   useEffect(() => {
     const categoria = searchParams.get("categoria");
     setFiltroCategoria(categoria || 'todos');
@@ -23,7 +20,6 @@ const Productos = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [searchParams]);
 
-  // Cargamos todos los productos de la tienda una sola vez al montar el componente
   useEffect(() => {
     const cargarProductos = async () => {
       setLoading(true);
@@ -39,8 +35,6 @@ const Productos = () => {
     cargarProductos();
   }, []);
 
-  // --- FILTRADO DINÁMICO CLIENT-SIDE (useMemo) ---
-  // Filtra en tiempo real basándose en el estado sin destruir ni mutar el array original de productos
   const productosFiltrados = useMemo(() => {
     return productos.filter(producto => {
       const cumpleCategoria = filtroCategoria === 'todos' || producto.categoria === filtroCategoria;
@@ -49,8 +43,6 @@ const Productos = () => {
     });
   }, [productos, filtroCategoria, filtroOferta]);
 
-  // --- CONTADOR ESTABLE DE CATEGORÍAS ---
-  // Siempre lee del catálogo maestro (`productos`), asegurando que los contadores del selector no cambien a 0
   const getCategoriaCount = (categoria) => {
     if (categoria === 'todos') return productos.length;
     return productos.filter(p => p.categoria === categoria).length;
