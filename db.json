@@ -94,6 +94,27 @@
       "stock": 4,
       "oferta": false
     }
+  ],
+
+  "usuarios": [
+    {
+      "id": 1,
+      "nombre": "Administrador",
+      "email": "admin@fashion.com",
+      "password": "admin123",
+      "rol": "admin"
+    }
   ]
+
 }
+
+
+
+
+
+
+
+
+
+
 
