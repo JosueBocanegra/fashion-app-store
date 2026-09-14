@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:5000/productos';
+const API_URL = 'https://6a472691abfcbaade11804fa.mockapi.io/productos';
 
 export const productosService = {
   // Obtener todos los productos
