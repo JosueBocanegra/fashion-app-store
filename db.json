@@ -104,7 +104,11 @@
       "password": "admin123",
       "rol": "admin"
     }
-  ]
+  ],
+
+  "clientes": [],
+
+  "publicidad": []
 
 }
 
