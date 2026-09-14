@@ -1,0 +1,99 @@
+{
+  "productos": [
+    {
+      "id": 1,
+      "nombre": "Casaca de cuero",
+      "precio": 50,
+      "imagen": "assets/img/casacaCueroHombre.jpg",
+      "categoria": "Hombre",
+      "stock": 10,
+      "oferta": true,
+      "descuento": 20
+    },
+    {
+      "id": 2,
+      "nombre": "Casaca impermeable",
+      "precio": 35,
+      "imagen": "assets/img/casacaImpermeableHombre.jpg",
+      "categoria": "Hombre",
+      "stock": 8,
+      "oferta": false
+    },
+    {
+      "id": 3,
+      "nombre": "Shorts casual",
+      "precio": 20,
+      "imagen": "assets/img/shortHombre.jpg",
+      "categoria": "Hombre",
+      "stock": 15,
+      "oferta": false
+    },
+    {
+      "id": 4,
+      "nombre": "Camisa formal",
+      "precio": 30,
+      "imagen": "assets/img/camisaFormalHombre.jpg",
+      "categoria": "Hombre",
+      "stock": 12,
+      "oferta": true,
+      "descuento": 10
+    },
+    {
+      "id": 5,
+      "nombre": "Terno formal",
+      "precio": 60,
+      "imagen": "assets/img/ternoHombre.jpg",
+      "categoria": "Hombre",
+      "stock": 5,
+      "oferta": false
+    },
+    {
+      "id": 6,
+      "nombre": "Camisa Perú",
+      "precio": 100,
+      "imagen": "assets/img/camisaPeru.jpg",
+      "categoria": "Hombre",
+      "stock": 7,
+      "oferta": true,
+      "descuento": 15
+    },
+    {
+      "id": 7,
+      "nombre": "Pantalón negro",
+      "precio": 40,
+      "imagen": "assets/img/pantalonFormalMujer.jpg",
+      "categoria": "Mujer",
+      "stock": 9,
+      "oferta": false
+    },
+    {
+      "id": 8,
+      "nombre": "Pantalón celeste",
+      "precio": 100,
+      "imagen": "assets/img/pantalonMujer.jpg",
+      "categoria": "Mujer",
+      "stock": 6,
+      "oferta": true,
+      "descuento": 30
+    },
+    {
+      "id": 9,
+      "nombre": "Blusa negra",
+      "precio": 50,
+      "imagen": "assets/img/blusaMujer.jpg",
+      "categoria": "Mujer",
+      "stock": 11,
+      "oferta": false
+    },
+    {
+      "id": 10,
+      "nombre": "Pantalón rosado",
+      "precio": 70,
+      "imagen": "assets/img/pantalonEstrellasMujer.jpg",
+      "categoria": "Mujer",
+      "stock": 4,
+      "oferta": false
+    }
+  ]
+}
+
