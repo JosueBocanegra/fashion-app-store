@@ -137,6 +137,27 @@
       "id": "7akX301nl3c"
     }
   ],
-  "publicidad": [],
+  "publicidad": [
+    {
+      "titulo": "Terno en Liquidación",
+      "descripcion": "Terno barato y nuevo",
+      "imagen": "assets/img/ternoHombre.jpg",
+      "descuento": 77,
+      "fechaInicio": "2026-09-15",
+      "fechaFin": "2026-09-30",
+      "estado": true,
+      "id": "_htTDJ1BOcI"
+    },
+    {
+      "titulo": "Camisetas Deportivas - 2026",
+      "descripcion": "Nueva colección de camisetas deportivas",
+      "imagen": "assets/img/camisaPeru.jpg",
+      "descuento": 50,
+      "fechaInicio": "2026-09-09",
+      "fechaFin": "2026-12-25",
+      "estado": true,
+      "id": "C4qzPoTMKUs"
+    }
+  ],
   "$schema": "./node_modules/json-server/schema.json"
 }

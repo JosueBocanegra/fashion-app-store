@@ -4,10 +4,8 @@ const links = [
   { to: "/admin/dashboard", label: "Dashboard" },
   { to: "/admin/clientes",  label: "Clientes" },
   { to: "/admin/usuarios",  label: "Usuarios" },
-  // Tus compañeros agregarán aquí:
   // { to: "/admin/productos", label: "Productos" },
-  // { to: "/admin/usuarios",  label: "Usuarios" },
-  // { to: "/admin/publicidad", label: "Publicidad" },
+  { to: "/admin/publicidad", label: "Publicidad" },
 ];
 
 const Sidebar = () => {
