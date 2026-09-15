@@ -102,6 +102,27 @@
       "email": "admin@fashion.com",
       "password": "admin123",
       "rol": "admin"
+    },
+    {
+      "nombre": "José Pérez",
+      "email": "JosePerez@gmail.com",
+      "password": "123456",
+      "rol": "empleado",
+      "id": "_JMrkfMIan4"
+    },
+    {
+      "nombre": "Josué Bocanegra",
+      "email": "josuebocanegra@gmail.com",
+      "password": "123456",
+      "rol": "empleado",
+      "id": "MnrR8xNUFGk"
+    },
+    {
+      "nombre": "Santiago Quiroga",
+      "email": "SantiagoQuiroga@gmail.com",
+      "password": "123456",
+      "rol": "admin",
+      "id": "IHf8rYHzz1w"
     }
   ],
   "clientes": [
