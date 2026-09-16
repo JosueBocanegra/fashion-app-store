@@ -1,6 +1,10 @@
-import { ShoppingCart, Tag } from 'lucide-react';
+import { useState } from 'react';
+import { ShoppingCart, Tag, ZoomIn } from 'lucide-react';
+import ImageModal from './ImageModal';
 
 const ProductCard = ({ producto }) => {
+  const [modalAbierto, setModalAbierto] = useState(false);
+
   const calcularPrecioConDescuento = () => {
     if (producto.oferta && producto.descuento) {
       return producto.precio - (producto.precio * producto.descuento / 100);
@@ -9,28 +13,49 @@ const ProductCard = ({ producto }) => {
   };
 
   const obtenerRutaImagen = () => {
+    if (!producto.imagen) return "https://via.placeholder.com/300x200?text=Sin+Imagen";
+    if (producto.imagen.startsWith("http://") || producto.imagen.startsWith("https://")) {
+      return producto.imagen;
+    }
     const nombreArchivo = producto.imagen.split('/').pop();
     return `/assets/img/${nombreArchivo}`;
   };
 
+  const rutaImagen = obtenerRutaImagen();
+
   return (
-    <div className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 flex flex-col h-full border border-slate-100">
-      <div className="relative w-full h-56 bg-slate-50">
-        <img 
-          src={obtenerRutaImagen()} 
-          alt={producto.nombre}
-          className="w-full h-full object-contain p-4"
-          onError={(e) => {
-            e.target.src = `https://via.placeholder.com/300x200/808080/FFFFFF?text=${producto.nombre}`;
-          }}
-        />
-        {producto.oferta && (
-          <span className="absolute top-3 right-3 bg-gradient-to-r from-red-500 to-pink-500 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg">
-            <Tag className="w-3 h-3" />
-            OFERTA
-          </span>
-        )}
-      </div>
+    <>
+      <div className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 flex flex-col h-full border border-slate-100 group">
+        {/* Contenedor de la imagen con click para ampliar */}
+        <div
+          onClick={() => setModalAbierto(true)}
+          className="relative w-full h-56 bg-slate-50 cursor-pointer overflow-hidden select-none"
+          title="Haz clic para ampliar la imagen"
+        >
+          <img 
+            src={rutaImagen} 
+            alt={producto.nombre}
+            className="w-full h-full object-contain p-4 transition-transform duration-300 group-hover:scale-105"
+            onError={(e) => {
+              e.target.src = `https://via.placeholder.com/300x200/808080/FFFFFF?text=${encodeURIComponent(producto.nombre || "Producto")}`;
+            }}
+          />
+
+          {/* Overlay sutil al hacer hover indicando que se puede ampliar */}
+          <div className="absolute inset-0 bg-slate-900/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/70 backdrop-blur-xs text-white text-xs font-medium shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-transform">
+              <ZoomIn className="w-3.5 h-3.5" />
+              Ampliar imagen
+            </span>
+          </div>
+
+          {producto.oferta && (
+            <span className="absolute top-3 right-3 bg-gradient-to-r from-red-500 to-pink-500 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg z-10">
+              <Tag className="w-3 h-3" />
+              OFERTA
+            </span>
+          )}
+        </div>
       
       <div className="p-5 flex flex-col flex-grow">
         <h3 className="text-lg font-semibold text-slate-800 mb-2 line-clamp-1">
@@ -73,6 +98,19 @@ const ProductCard = ({ producto }) => {
         </div>
       </div>
     </div>
+
+      {/* Modal para visualizar la imagen en pantalla completa */}
+      <ImageModal
+        isOpen={modalAbierto}
+        onClose={() => setModalAbierto(false)}
+        imagen={rutaImagen}
+        nombre={producto.nombre}
+        categoria={producto.categoria}
+        precio={producto.precio}
+        descuento={producto.descuento}
+        oferta={producto.oferta}
+      />
+    </>
   );
 };
 

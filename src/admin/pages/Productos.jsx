@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { productosService } from "../services/productosService";
+import ImageModal from "../../components/ImageModal";
 
 const initialForm = {
   nombre: "",
@@ -23,6 +24,7 @@ const Productos = () => {
   const [guardando, setGuardando] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const [filtroCategoria, setFiltroCategoria] = useState("todos");
+  const [productoVisualizando, setProductoVisualizando] = useState(null);
 
   const cargarProductos = async () => {
     setLoading(true);
@@ -346,14 +348,26 @@ const Productos = () => {
                     <tr key={p.id} className="hover:bg-stone-50/50 transition-colors">
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-3">
-                          <img
-                            src={resolverRutaImagen(p.imagen)}
-                            alt={p.nombre}
-                            className="w-11 h-11 rounded-lg object-contain bg-stone-100 border border-stone-200 p-1 flex-shrink-0"
-                            onError={(e) => {
-                              e.target.src = "https://via.placeholder.com/80?text=FS";
-                            }}
-                          />
+                          <button
+                            type="button"
+                            onClick={() => setProductoVisualizando(p)}
+                            className="relative group/img flex-shrink-0 cursor-pointer rounded-lg overflow-hidden focus:outline-none focus:ring-2 focus:ring-[#8a5a63]"
+                            title="Haz clic para ver imagen ampliada"
+                          >
+                            <img
+                              src={resolverRutaImagen(p.imagen)}
+                              alt={p.nombre}
+                              className="w-12 h-12 rounded-lg object-contain bg-stone-100 border border-stone-200 p-1 group-hover/img:scale-105 transition-transform"
+                              onError={(e) => {
+                                e.target.src = "https://via.placeholder.com/80?text=FS";
+                              }}
+                            />
+                            <div className="absolute inset-0 bg-black/45 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center text-white">
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7" />
+                              </svg>
+                            </div>
+                          </button>
                           <div>
                             <p className="font-medium text-neutral-900 line-clamp-1">{p.nombre}</p>
                             <span
@@ -601,6 +615,20 @@ const Productos = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Modal para ver imagen ampliada */}
+      {productoVisualizando && (
+        <ImageModal
+          isOpen={Boolean(productoVisualizando)}
+          onClose={() => setProductoVisualizando(null)}
+          imagen={resolverRutaImagen(productoVisualizando.imagen)}
+          nombre={productoVisualizando.nombre}
+          categoria={productoVisualizando.categoria}
+          precio={productoVisualizando.precio}
+          descuento={productoVisualizando.descuento}
+          oferta={productoVisualizando.oferta}
+        />
       )}
     </div>
   );
