@@ -24,5 +24,5 @@ Aplicación web tipo e-commerce desarrollada con React para el curso de JavaScri
 
 1. Clonar el repositorio:
 ```bash
-git clone [URL_DEL_REPOSITORIO]
+git clone https://github.com/JosueBocanegra/fashion-app-store
 cd fashion-store-react
