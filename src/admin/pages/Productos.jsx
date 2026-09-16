@@ -24,6 +24,8 @@ const Productos = () => {
   const [guardando, setGuardando] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const [filtroCategoria, setFiltroCategoria] = useState("todos");
+  const [filtroPromocion, setFiltroPromocion] = useState(false);
+  const [filtroBajoStock, setFiltroBajoStock] = useState(false);
   const [productoVisualizando, setProductoVisualizando] = useState(null);
 
   const cargarProductos = async () => {
@@ -165,9 +167,12 @@ const Productos = () => {
 
       const coincideCategoria =
         filtroCategoria === "todos" || p.categoria === filtroCategoria;
-      return coincideBusqueda && coincideCategoria;
+      const coincidePromocion = !filtroPromocion || p.oferta === true;
+      const coincideBajoStock = !filtroBajoStock || Number(p.stock) <= 5;
+
+      return coincideBusqueda && coincideCategoria && coincidePromocion && coincideBajoStock;
     });
-  }, [productos, busqueda, filtroCategoria]);
+  }, [productos, busqueda, filtroCategoria, filtroPromocion, filtroBajoStock]);
 
   const metricas = useMemo(() => {
     const total = productos.length;
@@ -213,24 +218,60 @@ const Productos = () => {
         </button>
       </div>
 
-      {/* Tarjetas de Métricas */}
+      {/* Tarjetas de Métricas (Interactuables como filtros rápidos) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white p-5 rounded-2xl border border-stone-200/80 shadow-xs">
-          <p className="text-[11px] uppercase tracking-wider text-neutral-400 font-medium">Total Productos</p>
+        <button
+          type="button"
+          onClick={() => {
+            setFiltroPromocion(false);
+            setFiltroBajoStock(false);
+          }}
+          className={`p-5 rounded-2xl border text-left transition-all cursor-pointer ${
+            !filtroPromocion && !filtroBajoStock
+              ? "bg-stone-50 border-stone-400 shadow-sm"
+              : "bg-white border-stone-200/80 hover:border-stone-300"
+          }`}
+        >
+          <p className="text-[11px] uppercase tracking-wider text-neutral-500 font-medium">Total Productos</p>
           <p className="text-2xl font-light text-neutral-900 mt-1">{metricas.total}</p>
-        </div>
-        <div className="bg-white p-5 rounded-2xl border border-stone-200/80 shadow-xs">
-          <p className="text-[11px] uppercase tracking-wider text-rose-500 font-medium">En Promoción</p>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setFiltroPromocion(!filtroPromocion)}
+          className={`p-5 rounded-2xl border text-left transition-all cursor-pointer ${
+            filtroPromocion
+              ? "bg-rose-50 border-rose-400 ring-2 ring-rose-500/20 shadow-sm"
+              : "bg-white border-stone-200/80 hover:border-rose-200"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] uppercase tracking-wider text-rose-600 font-medium">En Promoción</p>
+            {filtroPromocion && <span className="text-[10px] bg-rose-600 text-white px-1.5 py-0.5 rounded-full">Activo</span>}
+          </div>
           <p className="text-2xl font-light text-rose-600 mt-1">{metricas.ofertas}</p>
-        </div>
+        </button>
+
         <div className="bg-white p-5 rounded-2xl border border-stone-200/80 shadow-xs">
           <p className="text-[11px] uppercase tracking-wider text-neutral-400 font-medium">Stock Total</p>
           <p className="text-2xl font-light text-neutral-900 mt-1">{metricas.stockTotal} <span className="text-xs text-neutral-400">uds.</span></p>
         </div>
-        <div className="bg-white p-5 rounded-2xl border border-stone-200/80 shadow-xs">
-          <p className="text-[11px] uppercase tracking-wider text-amber-500 font-medium">Stock Bajo (≤ 5)</p>
+
+        <button
+          type="button"
+          onClick={() => setFiltroBajoStock(!filtroBajoStock)}
+          className={`p-5 rounded-2xl border text-left transition-all cursor-pointer ${
+            filtroBajoStock
+              ? "bg-amber-50 border-amber-400 ring-2 ring-amber-500/20 shadow-sm"
+              : "bg-white border-stone-200/80 hover:border-amber-200"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] uppercase tracking-wider text-amber-600 font-medium">Stock Bajo (≤ 5)</p>
+            {filtroBajoStock && <span className="text-[10px] bg-amber-600 text-white px-1.5 py-0.5 rounded-full">Activo</span>}
+          </div>
           <p className="text-2xl font-light text-amber-600 mt-1">{metricas.bajoStock}</p>
-        </div>
+        </button>
       </div>
 
       {/* Alerta de error */}
@@ -244,10 +285,11 @@ const Productos = () => {
         </div>
       )}
 
-      {/* Barra de Búsqueda y Filtros */}
-      <div className="bg-white p-4 rounded-2xl border border-stone-200/80 shadow-xs mb-6 flex flex-col md:flex-row gap-3 items-center justify-between">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2.5 w-full md:w-auto flex-1">
-          <div className="relative w-full sm:w-96">
+      {/* Barra de Búsqueda y Filtros en una sola línea compacta */}
+      <div className="bg-white p-3.5 rounded-2xl border border-stone-200/80 shadow-xs mb-6 flex flex-wrap items-center gap-3 justify-between">
+        {/* Búsqueda por texto o #ID */}
+        <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[260px]">
+          <div className="relative w-full sm:w-72">
             <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
               {esBusquedaPorId ? (
                 <span className="font-mono text-sm font-bold text-[#8a5a63]">#</span>
@@ -259,7 +301,7 @@ const Productos = () => {
             </span>
             <input
               type="text"
-              placeholder="Buscar por nombre, categoría o #ID (ej: #1)..."
+              placeholder="Buscar por nombre o #ID..."
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
               className={`w-full pl-10 pr-8 py-2 bg-stone-50 border rounded-xl text-sm text-neutral-800 placeholder-neutral-400
@@ -284,28 +326,86 @@ const Productos = () => {
           </div>
 
           {esBusquedaPorId && (
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-mono font-medium bg-[#8a5a63]/10 text-[#8a5a63] border border-[#8a5a63]/25">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-mono font-medium bg-[#8a5a63]/10 text-[#8a5a63] border border-[#8a5a63]/25">
               <span className="w-1.5 h-1.5 rounded-full bg-[#8a5a63] animate-pulse" />
-              <span>
-                Filtrando por ID: <strong className="font-bold">{busqueda.slice(1) ? `#${busqueda.slice(1).trim()}` : "(escribe un ID)"}</strong>
-              </span>
+              <span>ID: {busqueda.slice(1) ? `#${busqueda.slice(1).trim()}` : "..."}</span>
             </div>
           )}
         </div>
 
-        <div className="flex items-center gap-2 w-full md:w-auto">
-          <span className="text-xs text-neutral-500 font-medium">Categoría:</span>
-          <select
-            value={filtroCategoria}
-            onChange={(e) => setFiltroCategoria(e.target.value)}
-            className="px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-sm text-neutral-700
-                       focus:outline-none focus:border-[#8a5a63] cursor-pointer"
+        {/* Filtros: Categoría, En Promoción, Stock Bajo y Reset en la misma línea */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Selector Categoría */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-neutral-500 font-medium">Categoría:</span>
+            <select
+              value={filtroCategoria}
+              onChange={(e) => setFiltroCategoria(e.target.value)}
+              className="px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-sm text-neutral-700
+                         focus:outline-none focus:border-[#8a5a63] cursor-pointer"
+            >
+              <option value="todos">Todas</option>
+              {categoriasDisponibles.map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
+
+          <span className="h-5 w-px bg-stone-200 hidden sm:inline-block mx-0.5" />
+
+          {/* Botón Filtro En Promoción */}
+          <button
+            type="button"
+            onClick={() => setFiltroPromocion(!filtroPromocion)}
+            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer ${
+              filtroPromocion
+                ? "bg-rose-600 text-white shadow-xs shadow-rose-200"
+                : "bg-stone-50 border border-stone-200 text-neutral-700 hover:bg-stone-100"
+            }`}
           >
-            <option value="todos">Todas las categorías</option>
-            {categoriasDisponibles.map((cat) => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
-          </select>
+            <span className={`w-2 h-2 rounded-full ${filtroPromocion ? "bg-white" : "bg-rose-500"}`} />
+            <span>En Promoción</span>
+            <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${filtroPromocion ? "bg-white/25 text-white" : "bg-rose-100 text-rose-700"}`}>
+              {metricas.ofertas}
+            </span>
+          </button>
+
+          {/* Botón Filtro Stock Bajo */}
+          <button
+            type="button"
+            onClick={() => setFiltroBajoStock(!filtroBajoStock)}
+            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer ${
+              filtroBajoStock
+                ? "bg-amber-600 text-white shadow-xs shadow-amber-200"
+                : "bg-stone-50 border border-stone-200 text-neutral-700 hover:bg-stone-100"
+            }`}
+          >
+            <span className={`w-2 h-2 rounded-full ${filtroBajoStock ? "bg-white" : "bg-amber-500"}`} />
+            <span>Stock Bajo (≤ 5)</span>
+            <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${filtroBajoStock ? "bg-white/25 text-white" : "bg-amber-100 text-amber-700"}`}>
+              {metricas.bajoStock}
+            </span>
+          </button>
+
+          {/* Botón Limpiar Filtros */}
+          {(filtroPromocion || filtroBajoStock || filtroCategoria !== "todos" || busqueda) && (
+            <button
+              type="button"
+              onClick={() => {
+                setFiltroPromocion(false);
+                setFiltroBajoStock(false);
+                setFiltroCategoria("todos");
+                setBusqueda("");
+              }}
+              title="Restablecer filtros"
+              className="inline-flex items-center gap-1 px-2.5 py-2 text-xs font-medium text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-xl transition cursor-pointer"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              <span>Limpiar</span>
+            </button>
+          )}
         </div>
       </div>
 

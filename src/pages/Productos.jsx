@@ -1,8 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { productosService } from '../services/productosService';
-import ProductCard from '../components/ProductCard';
-import { Filter, X, Tag, Search } from 'lucide-react';
+import { Filter, X, Tag, Search, AlertTriangle } from 'lucide-react';
 
 const Productos = () => {
   const [searchParams] = useSearchParams();
@@ -12,6 +8,7 @@ const Productos = () => {
   const [loading, setLoading] = useState(true);
   const [filtroCategoria, setFiltroCategoria] = useState(categoriaURL || 'todos');
   const [filtroOferta, setFiltroOferta] = useState(false);
+  const [filtroBajoStock, setFiltroBajoStock] = useState(false);
   const [busqueda, setBusqueda] = useState('');
 
   useEffect(() => {
@@ -60,9 +57,10 @@ const Productos = () => {
 
       const cumpleCategoria = filtroCategoria === 'todos' || producto.categoria === filtroCategoria;
       const cumpleOferta = !filtroOferta || producto.oferta === true;
-      return coincideBusqueda && cumpleCategoria && cumpleOferta;
+      const cumpleBajoStock = !filtroBajoStock || Number(producto.stock) <= 5;
+      return coincideBusqueda && cumpleCategoria && cumpleOferta && cumpleBajoStock;
     });
-  }, [productos, filtroCategoria, filtroOferta, busqueda]);
+  }, [productos, filtroCategoria, filtroOferta, filtroBajoStock, busqueda]);
 
   const getCategoriaCount = (categoria) => {
     if (categoria === 'todos') return productos.length;
@@ -133,15 +131,28 @@ const Productos = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+            <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer select-none">
               <input 
                 type="checkbox"
                 checked={filtroOferta}
                 onChange={(e) => setFiltroOferta(e.target.checked)}
-                className="w-4 h-4 accent-purple-600 rounded"
+                className="w-4 h-4 accent-pink-600 rounded cursor-pointer"
               />
-              <Tag className="w-4 h-4 text-green-600" />
-              Ofertas
+              <Tag className="w-4 h-4 text-pink-500" />
+              <span>En Promoción</span>
+            </label>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer select-none">
+              <input 
+                type="checkbox"
+                checked={filtroBajoStock}
+                onChange={(e) => setFiltroBajoStock(e.target.checked)}
+                className="w-4 h-4 accent-amber-600 rounded cursor-pointer"
+              />
+              <AlertTriangle className="w-4 h-4 text-amber-500" />
+              <span>Stock Bajo (≤ 5)</span>
             </label>
           </div>
 
@@ -149,6 +160,7 @@ const Productos = () => {
             onClick={() => {
               setFiltroCategoria('todos');
               setFiltroOferta(false);
+              setFiltroBajoStock(false);
               setBusqueda('');
             }}
             className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-purple-600 hover:bg-purple-50 px-4 py-2 rounded-xl transition-colors ml-auto cursor-pointer"
@@ -159,7 +171,7 @@ const Productos = () => {
         </div>
 
         {/* Filtros activos */}
-        {(filtroCategoria !== 'todos' || filtroOferta || busqueda) && (
+        {(filtroCategoria !== 'todos' || filtroOferta || filtroBajoStock || busqueda) && (
           <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-slate-100">
             <span className="text-xs text-slate-500">Filtros activos:</span>
             {busqueda && (
@@ -185,11 +197,22 @@ const Productos = () => {
               </span>
             )}
             {filtroOferta && (
-              <span className="inline-flex items-center gap-1 text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full">
-                Ofertas
+              <span className="inline-flex items-center gap-1 text-xs bg-pink-100 text-pink-700 px-3 py-1 rounded-full font-medium">
+                En Promoción
                 <button 
                   onClick={() => setFiltroOferta(false)}
-                  className="hover:text-green-900 cursor-pointer"
+                  className="hover:text-pink-900 cursor-pointer"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+            {filtroBajoStock && (
+              <span className="inline-flex items-center gap-1 text-xs bg-amber-100 text-amber-700 px-3 py-1 rounded-full font-medium">
+                Stock Bajo (≤ 5)
+                <button 
+                  onClick={() => setFiltroBajoStock(false)}
+                  className="hover:text-amber-900 cursor-pointer"
                 >
                   <X className="w-3 h-3" />
                 </button>
