@@ -136,11 +136,31 @@ const Productos = () => {
     }
   };
 
+  const esBusquedaPorId = busqueda.trim().startsWith("#");
+
   const productosFiltrados = useMemo(() => {
+    const query = busqueda.trim();
+    const esPorId = query.startsWith("#");
+    const idBuscado = esPorId ? query.slice(1).trim().toLowerCase() : "";
+
     return productos.filter((p) => {
-      const coincideBusqueda =
-        p.nombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
-        p.categoria?.toLowerCase().includes(busqueda.toLowerCase());
+      let coincideBusqueda = true;
+
+      if (query) {
+        if (esPorId) {
+          // Búsqueda específica por ID al colocar '#'
+          coincideBusqueda = idBuscado
+            ? String(p.id).toLowerCase().includes(idBuscado)
+            : true;
+        } else {
+          const termino = query.toLowerCase();
+          coincideBusqueda =
+            p.nombre?.toLowerCase().includes(termino) ||
+            p.categoria?.toLowerCase().includes(termino) ||
+            String(p.id).toLowerCase() === termino;
+        }
+      }
+
       const coincideCategoria =
         filtroCategoria === "todos" || p.categoria === filtroCategoria;
       return coincideBusqueda && coincideCategoria;
@@ -223,24 +243,55 @@ const Productos = () => {
       )}
 
       {/* Barra de Búsqueda y Filtros */}
-      <div className="bg-white p-4 rounded-2xl border border-stone-200/80 shadow-xs mb-6 flex flex-col sm:flex-row gap-3 items-center justify-between">
-        <div className="relative w-full sm:w-80">
-          <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-neutral-400 pointer-events-none">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </span>
-          <input
-            type="text"
-            placeholder="Buscar por nombre o categoría..."
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-stone-50 border border-stone-200 rounded-xl text-sm text-neutral-800 placeholder-neutral-400
-                       focus:outline-none focus:border-[#8a5a63] focus:bg-white transition"
-          />
+      <div className="bg-white p-4 rounded-2xl border border-stone-200/80 shadow-xs mb-6 flex flex-col md:flex-row gap-3 items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2.5 w-full md:w-auto flex-1">
+          <div className="relative w-full sm:w-96">
+            <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+              {esBusquedaPorId ? (
+                <span className="font-mono text-sm font-bold text-[#8a5a63]">#</span>
+              ) : (
+                <svg className="w-4 h-4 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              )}
+            </span>
+            <input
+              type="text"
+              placeholder="Buscar por nombre, categoría o #ID (ej: #1)..."
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              className={`w-full pl-10 pr-8 py-2 bg-stone-50 border rounded-xl text-sm text-neutral-800 placeholder-neutral-400
+                         focus:outline-none focus:bg-white transition ${
+                           esBusquedaPorId
+                             ? "border-[#8a5a63] ring-2 ring-[#8a5a63]/15 font-mono"
+                             : "border-stone-200 focus:border-[#8a5a63]"
+                         }`}
+            />
+            {busqueda && (
+              <button
+                type="button"
+                onClick={() => setBusqueda("")}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-neutral-400 hover:text-neutral-600 transition cursor-pointer"
+                title="Borrar búsqueda"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+
+          {esBusquedaPorId && (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-mono font-medium bg-[#8a5a63]/10 text-[#8a5a63] border border-[#8a5a63]/25">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#8a5a63] animate-pulse" />
+              <span>
+                Filtrando por ID: <strong className="font-bold">{busqueda.slice(1) ? `#${busqueda.slice(1).trim()}` : "(escribe un ID)"}</strong>
+              </span>
+            </div>
+          )}
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex items-center gap-2 w-full md:w-auto">
           <span className="text-xs text-neutral-500 font-medium">Categoría:</span>
           <select
             value={filtroCategoria}
@@ -289,6 +340,8 @@ const Productos = () => {
                     ? p.precio - (p.precio * p.descuento) / 100
                     : p.precio;
 
+                  const idCoincide = esBusquedaPorId && busqueda.slice(1).trim() && String(p.id).toLowerCase().includes(busqueda.slice(1).trim().toLowerCase());
+
                   return (
                     <tr key={p.id} className="hover:bg-stone-50/50 transition-colors">
                       <td className="py-3 px-4">
@@ -303,7 +356,15 @@ const Productos = () => {
                           />
                           <div>
                             <p className="font-medium text-neutral-900 line-clamp-1">{p.nombre}</p>
-                            <p className="text-[11px] text-neutral-400 font-mono">ID: {p.id}</p>
+                            <span
+                              className={`text-[11px] font-mono px-1.5 py-0.5 rounded transition-colors inline-block mt-0.5 ${
+                                idCoincide
+                                  ? "bg-[#8a5a63] text-white font-bold"
+                                  : "text-neutral-500 bg-stone-100"
+                              }`}
+                            >
+                              ID: #{p.id}
+                            </span>
                           </div>
                         </div>
                       </td>
