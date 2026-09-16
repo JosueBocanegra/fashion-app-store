@@ -28,6 +28,9 @@ const Productos = () => {
   const [filtroPromocion, setFiltroPromocion] = useState(false);
   const [filtroBajoStock, setFiltroBajoStock] = useState(false);
   const [productoVisualizando, setProductoVisualizando] = useState(null);
+  const [productoAEliminar, setProductoAEliminar] = useState(null);
+  const [eliminando, setEliminando] = useState(false);
+  const [errorEliminar, setErrorEliminar] = useState("");
   const [confirmacion, setConfirmacion] = useState(() => {
     return sessionStorage.getItem("producto_confirmacion") || null;
   });
@@ -160,15 +163,34 @@ const Productos = () => {
     }
   };
 
-  const handleEliminar = async (producto) => {
-    const confirmar = window.confirm(`¿Estás seguro de eliminar "${producto.nombre}"?`);
-    if (!confirmar) return;
+  const abrirModalEliminar = (producto) => {
+    setErrorEliminar("");
+    setProductoAEliminar(producto);
+  };
+
+  const cerrarModalEliminar = () => {
+    if (eliminando) return;
+    setProductoAEliminar(null);
+    setErrorEliminar("");
+  };
+
+  const confirmarEliminar = async () => {
+    if (!productoAEliminar) return;
+
+    setEliminando(true);
+    setErrorEliminar("");
 
     try {
-      await productosService.eliminarProducto(producto.id);
+      await productosService.eliminarProducto(productoAEliminar.id);
+      const mensaje = `El producto "${productoAEliminar.nombre}" se ha eliminado correctamente.`;
+      sessionStorage.setItem("producto_confirmacion", mensaje);
+      setConfirmacion(mensaje);
+      setProductoAEliminar(null);
       await cargarProductos();
     } catch (err) {
-      setError("No se pudo eliminar el producto.");
+      setErrorEliminar("No se pudo eliminar el producto. Verifica que json-server esté en ejecución.");
+    } finally {
+      setEliminando(false);
     }
   };
 
@@ -596,11 +618,11 @@ const Productos = () => {
                             </svg>
                           </button>
                           <button
-                            onClick={() => handleEliminar(p)}
+                            onClick={() => abrirModalEliminar(p)}
                             title="Eliminar producto"
-                            className="p-1.5 text-neutral-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                            className="p-1.5 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all cursor-pointer active:scale-95 group/del"
                           >
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
+                            <svg className="w-4 h-4 transition-transform group-hover/del:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                             </svg>
                           </button>
@@ -790,6 +812,110 @@ const Productos = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Gráfico de Confirmación de Eliminación */}
+      {productoAEliminar && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs animate-in fade-in duration-150">
+          <div
+            className="bg-white rounded-3xl shadow-2xl border border-stone-200/80 max-w-md w-full p-6 overflow-hidden relative"
+            role="dialog"
+            aria-modal="true"
+          >
+            {/* Glow decorativo sutil en esquina */}
+            <div className="absolute -top-10 -right-10 w-36 h-36 bg-rose-500/10 rounded-full blur-2xl pointer-events-none" />
+
+            <div className="flex flex-col items-center text-center">
+              {/* Ícono de advertencia / papelera */}
+              <div className="w-14 h-14 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 mb-4 shadow-inner">
+                <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+
+              <h3 className="text-xl font-bold text-neutral-900 tracking-tight">
+                ¿Eliminar este producto?
+              </h3>
+              <p className="text-sm text-neutral-500 mt-1 max-w-xs leading-relaxed">
+                Esta acción no se puede deshacer. El producto será retirado permanentemente del catálogo y del inventario.
+              </p>
+
+              {/* Tarjeta de previsualización del producto */}
+              <div className="w-full mt-5 p-3.5 bg-stone-50 border border-stone-200/80 rounded-2xl text-left flex items-center gap-3.5">
+                <img
+                  src={resolverRutaImagen(productoAEliminar.imagen)}
+                  alt={productoAEliminar.nombre}
+                  className="w-14 h-14 rounded-xl object-contain bg-white border border-stone-200 p-1 flex-shrink-0"
+                  onError={(e) => {
+                    e.target.src = "https://via.placeholder.com/80?text=FS";
+                  }}
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[11px] font-mono font-bold px-1.5 py-0.5 rounded bg-stone-200/70 text-neutral-700">
+                      #{productoAEliminar.id}
+                    </span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-white border border-stone-200 text-neutral-600 font-medium">
+                      {productoAEliminar.categoria}
+                    </span>
+                  </div>
+                  <p className="font-semibold text-neutral-900 text-sm mt-1 truncate">
+                    {productoAEliminar.nombre}
+                  </p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-xs font-semibold text-neutral-800">
+                      S/{Number(productoAEliminar.precio).toFixed(2)}
+                    </span>
+                    <span className="text-xs text-neutral-400">•</span>
+                    <span className="text-xs text-neutral-500">
+                      {productoAEliminar.stock} en stock
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Error en caso falle */}
+              {errorEliminar && (
+                <div className="w-full mt-3 p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-medium text-left flex items-center gap-2">
+                  <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>{errorEliminar}</span>
+                </div>
+              )}
+
+              {/* Botones de acción */}
+              <div className="grid grid-cols-2 gap-3 w-full mt-6">
+                <button
+                  type="button"
+                  disabled={eliminando}
+                  onClick={cerrarModalEliminar}
+                  className="w-full py-2.5 px-4 rounded-xl text-sm font-semibold text-neutral-700 bg-stone-100 hover:bg-stone-200 active:bg-stone-300 transition cursor-pointer disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  disabled={eliminando}
+                  onClick={confirmarEliminar}
+                  className="w-full py-2.5 px-4 rounded-xl text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 active:bg-rose-800 shadow-md shadow-rose-600/25 transition cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60"
+                >
+                  {eliminando ? (
+                    <>
+                      <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                      </svg>
+                      <span>Eliminando...</span>
+                    </>
+                  ) : (
+                    <span>Sí, eliminar</span>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

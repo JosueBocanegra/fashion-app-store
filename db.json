@@ -93,16 +93,6 @@
       "categoria": "Mujer",
       "stock": 4,
       "oferta": false
-    },
-    {
-      "id": "1LdIxVwcvWc",
-      "nombre": "waazaaa",
-      "precio": 14,
-      "categoria": "Hombre",
-      "stock": 5,
-      "imagen": "assets/img/casacaCueroHombre.jpg",
-      "oferta": false,
-      "descuento": 0
     }
   ],
   "usuarios": [
