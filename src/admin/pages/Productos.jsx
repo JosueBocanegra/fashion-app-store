@@ -18,6 +18,7 @@ const Productos = () => {
   const [productos, setProductos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [errorModal, setErrorModal] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editando, setEditando] = useState(null);
   const [form, setForm] = useState(initialForm);
@@ -49,6 +50,7 @@ const Productos = () => {
     setEditando(null);
     setForm(initialForm);
     setError("");
+    setErrorModal("");
     setModalOpen(true);
   };
 
@@ -64,17 +66,20 @@ const Productos = () => {
       descuento: producto.descuento ?? 0,
     });
     setError("");
+    setErrorModal("");
     setModalOpen(true);
   };
 
   const cerrarModal = () => {
     setModalOpen(false);
     setEditando(null);
+    setErrorModal("");
     setForm(initialForm);
   };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    if (errorModal) setErrorModal("");
     setForm((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
@@ -85,20 +90,24 @@ const Productos = () => {
     e.preventDefault();
 
     if (!form.nombre.trim()) {
-      setError("El nombre del producto es obligatorio.");
+      setErrorModal("El nombre del producto es obligatorio.");
       return;
     }
     if (form.precio === "" || Number(form.precio) <= 0) {
-      setError("El precio debe ser un número mayor a 0.");
+      setErrorModal("El precio debe ser un número válido mayor a 0.");
       return;
     }
     if (form.stock === "" || Number(form.stock) < 0) {
-      setError("El stock no puede ser negativo.");
+      setErrorModal("El stock no puede ser un valor negativo.");
+      return;
+    }
+    if (form.oferta && (form.descuento === "" || Number(form.descuento) <= 0 || Number(form.descuento) >= 100)) {
+      setErrorModal("El porcentaje de descuento debe ser mayor a 0% y menor a 100%.");
       return;
     }
 
     setGuardando(true);
-    setError("");
+    setErrorModal("");
 
     const payload = {
       nombre: form.nombre.trim(),
@@ -122,7 +131,7 @@ const Productos = () => {
       await cargarProductos();
       cerrarModal();
     } catch (err) {
-      setError("Ocurrió un error al guardar el producto. Intenta nuevamente.");
+      setErrorModal("No se pudo guardar el producto. Asegúrate de que el servidor esté activo.");
     } finally {
       setGuardando(false);
     }
@@ -274,8 +283,8 @@ const Productos = () => {
         </button>
       </div>
 
-      {/* Alerta de error */}
-      {error && (
+      {/* Alerta de error general (solo fuera del modal) */}
+      {error && !modalOpen && (
         <div className="mb-6 flex items-start gap-3 bg-rose-50 border border-rose-200 text-rose-800 text-sm rounded-xl p-3.5">
           <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <circle cx="12" cy="12" r="9" />
@@ -572,6 +581,17 @@ const Productos = () => {
                 </svg>
               </button>
             </div>
+
+            {/* Mensaje de error de validación o guardado dentro del modal */}
+            {errorModal && (
+              <div className="mx-6 mt-4 p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl flex items-start gap-2.5 animate-[fadeIn_0.2s_ease]">
+                <svg className="w-4 h-4 flex-shrink-0 mt-0.5 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <circle cx="12" cy="12" r="9" />
+                  <path strokeLinecap="round" strokeWidth="2" d="M12 8v4m0 4h.01" />
+                </svg>
+                <span className="leading-relaxed font-medium">{errorModal}</span>
+              </div>
+            )}
 
             {/* Formulario */}
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
