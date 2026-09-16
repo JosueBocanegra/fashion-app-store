@@ -28,6 +28,23 @@ const Productos = () => {
   const [filtroPromocion, setFiltroPromocion] = useState(false);
   const [filtroBajoStock, setFiltroBajoStock] = useState(false);
   const [productoVisualizando, setProductoVisualizando] = useState(null);
+  const [confirmacion, setConfirmacion] = useState(() => {
+    return sessionStorage.getItem("producto_confirmacion") || null;
+  });
+
+  useEffect(() => {
+    if (!confirmacion) return;
+    const timer = setTimeout(() => {
+      setConfirmacion(null);
+      sessionStorage.removeItem("producto_confirmacion");
+    }, 4500);
+    return () => clearTimeout(timer);
+  }, [confirmacion]);
+
+  const cerrarConfirmacion = () => {
+    setConfirmacion(null);
+    sessionStorage.removeItem("producto_confirmacion");
+  };
 
   const cargarProductos = async () => {
     setLoading(true);
@@ -120,6 +137,7 @@ const Productos = () => {
     };
 
     try {
+      const eraNuevo = !editando;
       if (editando) {
         await productosService.actualizarProducto(editando, payload);
       } else {
@@ -130,6 +148,11 @@ const Productos = () => {
       }
       await cargarProductos();
       cerrarModal();
+
+      // Guardar en sessionStorage para persistir ante cualquier recarga
+      const mensaje = eraNuevo ? "El producto se ha agregado correctamente." : "El producto se ha actualizado correctamente.";
+      sessionStorage.setItem("producto_confirmacion", mensaje);
+      setConfirmacion(mensaje);
     } catch (err) {
       setErrorModal("No se pudo guardar el producto. Asegúrate de que el servidor esté activo.");
     } finally {
@@ -200,6 +223,40 @@ const Productos = () => {
 
   return (
     <div>
+      {/* Tarjeta de Confirmación Visual simple (solo mensaje) */}
+      {confirmacion && (
+        <div className="fixed top-6 right-6 z-50 max-w-sm w-full bg-white rounded-2xl border border-emerald-200 shadow-xl p-4 animate-[slideIn_0.3s_ease] transition-all">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 flex-shrink-0">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </span>
+              <p className="text-sm font-medium text-neutral-800">
+                {confirmacion}
+              </p>
+            </div>
+
+            {/* Botón cerrar */}
+            <button
+              onClick={cerrarConfirmacion}
+              className="text-neutral-400 hover:text-neutral-700 p-1.5 rounded-lg hover:bg-stone-100 transition cursor-pointer flex-shrink-0"
+              title="Cerrar mensaje"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Barra de progreso de auto-cierre */}
+          <div className="mt-2.5 w-full bg-emerald-100 h-1 rounded-full overflow-hidden">
+            <div className="bg-emerald-500 h-full w-full animate-[shrink_4.5s_linear_forwards]" />
+          </div>
+        </div>
+      )}
+
       {/* Encabezado */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
