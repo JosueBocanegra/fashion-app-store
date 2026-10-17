@@ -95,6 +95,7 @@
       "oferta": false
     }
   ],
+
   "usuarios": [
     {
       "id": "1",
@@ -125,6 +126,7 @@
       "id": "IHf8rYHzz1w"
     }
   ],
+
   "clientes": [
     {
       "nombre": "Angel",
@@ -137,6 +139,31 @@
       "id": "7akX301nl3c"
     }
   ],
+
+  "ventas": [
+    {
+      "id": "1",
+      "fecha": "2026-01-15T10:30:00.000Z",
+      "clienteId": "1",
+      "items": [
+        { "productoId": "1", "nombre": "Casaca de cuero", "cantidad": 2, "precioUnitario": 50 },
+        { "productoId": "3", "nombre": "Shorts casual", "cantidad": 1, "precioUnitario": 20 }
+      ],
+      "total": 120,
+      "estado": "completado"
+    },
+    {
+      "id": "2",
+      "fecha": "2026-02-20T14:15:00.000Z",
+      "clienteId": "2",
+      "items": [
+        { "productoId": "8", "nombre": "Pantalón celeste", "cantidad": 1, "precioUnitario": 100 }
+      ],
+      "total": 100,
+      "estado": "completado"
+    }
+  ],
+
   "publicidad": [
     {
       "titulo": "Terno en Liquidación",
@@ -158,6 +185,5 @@
       "estado": true,
       "id": "C4qzPoTMKUs"
     }
-  ],
-  "$schema": "./node_modules/json-server/schema.json"
+  ]
 }
