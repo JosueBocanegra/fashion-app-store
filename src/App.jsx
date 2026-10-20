@@ -5,6 +5,7 @@ import Home from "./pages/Home";
 import About from "./pages/About";
 import Productos from "./pages/Productos";
 import Contacto from "./pages/Contacto";
+import DatosCliente from "./pages/DatosCliente";
 import NotFound from "./pages/NotFound";
 import Login from "./admin/pages/Login";
 import AdminRoutes from "./admin/routes/AdminRoutes";
@@ -20,6 +21,7 @@ function PublicLayout() {
           <Route path="/about" element={<About />} />
           <Route path="/productos" element={<Productos />} />
           <Route path="/contacto" element={<Contacto />} />
+          <Route path="/datos-cliente" element={<DatosCliente />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
