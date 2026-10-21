@@ -1,9 +1,20 @@
-import { Link } from 'react-router-dom';
-import { ShoppingBag, Home, Users, Package, Mail, Menu, X } from 'lucide-react';
 import { useState } from 'react';
+import {
+  ShoppingBag,
+  Home,
+  Users,
+  Package,
+  Mail,
+  Menu,
+  X,
+  ShoppingCart
+} from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { useCarrito } from '../context/CarritoContext';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const { cantidadProductos } = useCarrito();
 
   return (
     <nav className="bg-gradient-to-r from-slate-900 via-purple-900 to-indigo-900 sticky top-0 z-50 shadow-2xl border-b border-white/10">
@@ -45,6 +56,19 @@ const Navbar = () => {
             >
               <Mail className="w-4 h-4" />
               Contacto
+            </Link>
+            <Link
+              to="/carrito"
+              className="relative flex items-center gap-2 px-4 py-2 text-white/70 hover:text-white hover:bg-white/10 rounded-xl transition-all duration-300 font-medium"
+            >
+              <ShoppingCart className="w-5 h-5" />
+              Carrito
+
+              {cantidadProductos > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold min-w-[20px] h-5 px-1 rounded-full flex items-center justify-center">
+                  {cantidadProductos}
+                </span>
+              )}
             </Link>
           </div>
 
