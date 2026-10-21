@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { ShoppingCart, Tag, ZoomIn } from 'lucide-react';
 import ImageModal from './ImageModal';
+import { useCarrito } from '../context/CarritoContext';
 
 const ProductCard = ({ producto }) => {
   const [modalAbierto, setModalAbierto] = useState(false);
+  const { agregarAlCarrito } = useCarrito();
 
   const calcularPrecioConDescuento = () => {
     if (producto.oferta && producto.descuento) {
@@ -91,9 +93,13 @@ const ProductCard = ({ producto }) => {
               </span>
             )}
           </div>
-          <button className="inline-flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-xl hover:bg-purple-700 transition-all duration-300 hover:scale-105 text-sm font-medium cursor-pointer">
+          <button 
+            onClick={() => agregarAlCarrito(producto)}
+            disabled={Number(producto.stock) <= 0}
+            className="inline-flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-xl hover:bg-purple-700 transition-all duration-300 hover:scale-105 text-sm font-medium cursor-pointer disabled:bg-gray-400 disabled:cursor-not-allowed disabled:hover:scale-100"
+          >
             <ShoppingCart className="w-4 h-4" />
-            Agregar
+            {Number(producto.stock) <= 0 ? "Sin stock" : "Agregar"}
           </button>
         </div>
       </div>

@@ -192,7 +192,7 @@ const DatosCliente = () => {
   const productosCompra = obtenerProductosCompra();
   const totalCompra = productosCompra.reduce((acc, it) => {
     const cant = Number(it.cantidad) || 1;
-    const precio = Number(it.precioUnitario ?? it.precio ?? 0);
+    const precio = Number(it.precioFinal ?? it.precioUnitario ?? it.precio ?? 0);
     return acc + Number(it.subtotal ?? (cant * precio));
   }, 0);
 
@@ -331,7 +331,7 @@ const DatosCliente = () => {
                 <div className="divide-y divide-slate-200/70">
                   {productosCompra.map((item, idx) => {
                     const cant = Number(item.cantidad) || 1;
-                    const precio = Number(item.precioUnitario ?? item.precio ?? 0);
+                    const precio = Number(item.precioFinal ?? item.precioUnitario ?? item.precio ?? 0);
                     const sub = Number(item.subtotal ?? (cant * precio));
                     return (
                       <div key={item.id || idx} className="py-2.5 flex justify-between items-center text-sm">

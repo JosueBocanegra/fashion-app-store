@@ -174,7 +174,7 @@ export const agregarDetalleProductos = (doc, productos = [], startY = 92) => {
     }
 
     const cantidad = Number(item.cantidad) || 1;
-    const precioUnitario = Number(item.precioUnitario ?? item.precio ?? 0);
+    const precioUnitario = Number(item.precioFinal ?? item.precioUnitario ?? item.precio ?? 0);
     const subtotal = Number(item.subtotal ?? (cantidad * precioUnitario));
     const nombre = item.nombre || item.titulo || item.descripcion || `Producto ${index + 1}`;
 
@@ -234,7 +234,7 @@ export const agregarTotalCompra = (doc, productos = [], totalManual = null, star
   const totalCalculado = Array.isArray(productos)
     ? productos.reduce((acumulado, item) => {
         const cantidad = Number(item.cantidad) || 1;
-        const precio = Number(item.precioUnitario ?? item.precio ?? 0);
+        const precio = Number(item.precioFinal ?? item.precioUnitario ?? item.precio ?? 0);
         const subtotal = Number(item.subtotal ?? (cantidad * precio));
         return acumulado + subtotal;
       }, 0)
