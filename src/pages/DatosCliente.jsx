@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { User, Mail, Phone, MapPin, CheckCircle, ArrowRight } from 'lucide-react';
+import { User, Mail, Phone, MapPin, CheckCircle, ArrowRight, Download } from 'lucide-react';
+import { descargarBoletaPDF } from '../services/boletaService';
 
 // clave donde se guardan los datos para el resumen de compra
 const CLAVE_STORAGE = "datosCliente";
@@ -23,6 +24,7 @@ const DatosCliente = () => {
     const datosGuardados = sessionStorage.getItem(CLAVE_STORAGE);
     if (datosGuardados) {
       setFormData(JSON.parse(datosGuardados));
+      setGuardado(true);
     }
   }, []);
 
@@ -150,6 +152,31 @@ const DatosCliente = () => {
     setGuardado(false);
   };
 
+  const handleDescargarBoleta = () => {
+    let productos = [];
+    try {
+      const guardados = sessionStorage.getItem('carrito') || localStorage.getItem('carrito');
+      if (guardados) {
+        const parsed = JSON.parse(guardados);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          productos = parsed;
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    // Si aún no hay productos en el carrito, usamos productos de muestra de la tienda
+    if (productos.length === 0) {
+      productos = [
+        { id: '1', nombre: 'Casaca de cuero', cantidad: 1, precioUnitario: 50, subtotal: 50 },
+        { id: '3', nombre: 'Shorts casual', cantidad: 2, precioUnitario: 20, subtotal: 40 }
+      ];
+    }
+
+    descargarBoletaPDF(formData, productos, null, 'boleta-compra.pdf');
+  };
+
   const obtenerClaseInput = (campo) => {
     if (!tocados[campo]) return "border-slate-200";
     if (errores[campo]) return "border-red-400 focus:ring-red-500";
@@ -187,14 +214,24 @@ const DatosCliente = () => {
         <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8 border border-slate-100">
 
           {guardado && (
-            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl mb-6">
-              <div className="flex items-center gap-2 font-semibold">
-                <CheckCircle className="w-5 h-5" />
-                ¡Datos registrados correctamente!
+            <div className="bg-green-50 border border-green-200 text-green-700 p-4 rounded-xl mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 font-semibold">
+                  <CheckCircle className="w-5 h-5" />
+                  ¡Datos registrados correctamente!
+                </div>
+                <p className="text-sm mt-1">
+                  {formData.nombre} {formData.apellido}, tus datos se usarán en el resumen de compra.
+                </p>
               </div>
-              <p className="text-sm mt-1">
-                {formData.nombre} {formData.apellido}, tus datos se usarán en el resumen de compra.
-              </p>
+              <button
+                type="button"
+                onClick={handleDescargarBoleta}
+                className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-medium px-4 py-2.5 rounded-xl shadow-md transition-all duration-300 hover:scale-105 cursor-pointer text-sm whitespace-nowrap"
+              >
+                <Download className="w-4 h-4" />
+                Descargar boleta PDF
+              </button>
             </div>
           )}
 

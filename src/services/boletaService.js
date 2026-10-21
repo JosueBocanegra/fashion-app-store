@@ -155,7 +155,7 @@ export const agregarDetalleProductos = (doc, productos = [], startY = 92) => {
 
   productos.forEach((item, index) => {
     // Si la posición Y sobrepasa el límite inferior de la página, creamos una nueva
-    if (y > 270) {
+    if (y > 240) {
       doc.addPage();
       y = 20;
 
@@ -213,32 +213,152 @@ export const agregarDetalleProductos = (doc, productos = [], startY = 92) => {
 };
 
 /**
- * Inicializa y genera el documento PDF de la boleta con la fecha, datos del cliente y lista de productos.
+ * Agrega el bloque de totales de la compra y el pie de página al documento PDF.
+ * 
+ * @param {jsPDF} doc - Instancia del documento jsPDF
+ * @param {Array<Object>} productos - Lista de productos para calcular el total
+ * @param {number|null} [totalManual=null] - Total opcional especificado
+ * @param {number} [startY=120] - Posición vertical inicial
+ * @returns {number} Posición Y final
+ */
+export const agregarTotalCompra = (doc, productos = [], totalManual = null, startY = 120) => {
+  let y = startY;
+
+  // Si queda poco espacio, añadir página
+  if (y > 235) {
+    doc.addPage();
+    y = 20;
+  }
+
+  // Calcular el total a partir de los productos si no se especifica manualmente
+  const totalCalculado = Array.isArray(productos)
+    ? productos.reduce((acumulado, item) => {
+        const cantidad = Number(item.cantidad) || 1;
+        const precio = Number(item.precioUnitario ?? item.precio ?? 0);
+        const subtotal = Number(item.subtotal ?? (cantidad * precio));
+        return acumulado + subtotal;
+      }, 0)
+    : 0;
+
+  const totalFinal = totalManual !== null && !isNaN(Number(totalManual))
+    ? Number(totalManual)
+    : totalCalculado;
+
+  // Bloque resumen alineado a la derecha
+  const inicioX = 120;
+  const anchoBloque = 76;
+  const altoBloque = 22;
+
+  // Recuadro estético para el total
+  doc.setFillColor(245, 243, 255); // purple-50
+  doc.roundedRect(inicioX, y, anchoBloque, altoBloque, 2, 2, 'F');
+  doc.setDrawColor(216, 180, 254); // purple-300
+  doc.setLineWidth(0.4);
+  doc.roundedRect(inicioX, y, anchoBloque, altoBloque, 2, 2, 'S');
+
+  // Cantidad total de artículos
+  const cantidadArticulos = Array.isArray(productos)
+    ? productos.reduce((acc, item) => acc + (Number(item.cantidad) || 1), 0)
+    : 0;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(100, 116, 139); // slate-500
+  doc.text(`Artículos (${cantidadArticulos}):`, inicioX + 6, y + 8);
+  doc.text(`S/ ${totalFinal.toFixed(2)}`, inicioX + anchoBloque - 6, y + 8, { align: 'right' });
+
+  // Línea divisoria en el bloque
+  doc.setDrawColor(233, 213, 255); // purple-200
+  doc.line(inicioX + 6, y + 11, inicioX + anchoBloque - 6, y + 11);
+
+  // Total destacado
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.setTextColor(109, 40, 217); // purple-700
+  doc.text('TOTAL:', inicioX + 6, y + 18);
+  doc.text(`S/ ${totalFinal.toFixed(2)}`, inicioX + anchoBloque - 6, y + 18, { align: 'right' });
+
+  y += altoBloque + 18;
+
+  // Mensaje de pie de página
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(9);
+  doc.setTextColor(148, 163, 184); // slate-400
+  doc.text('¡Gracias por tu compra en Fashion Store!', 105, y, { align: 'center' });
+  doc.text('Para cualquier cambio o consulta conserva esta boleta.', 105, y + 5, { align: 'center' });
+
+  return y + 10;
+};
+
+/**
+ * Genera el documento PDF completo de la boleta de compra.
  * 
  * @param {Object} datosCliente - Datos del cliente
- * @param {Array<Object>} [productos=[]] - Lista de productos con cantidades y subtotales
+ * @param {Array<Object>} [productos=[]] - Lista de productos
+ * @param {Object|number|null} [opcionesOTotal=null] - Total de compra u objeto con opciones
  * @param {Date|string} [fecha=new Date()] - Fecha de emisión
- * @returns {jsPDF} Instancia del documento PDF
+ * @returns {jsPDF} Instancia del documento jsPDF
  */
-export const generarBoletaPDF = (datosCliente = {}, productos = [], fecha = new Date()) => {
+export const generarBoletaPDF = (
+  datosCliente = {},
+  productos = [],
+  opcionesOTotal = null,
+  fecha = new Date()
+) => {
   let items = productos;
   let fechaEmision = fecha;
+  let totalManual = null;
 
+  // Soporte flexible si fecha se pasó como segundo argumento
   if (!Array.isArray(productos) && (productos instanceof Date || typeof productos === 'string')) {
     fechaEmision = productos;
     items = [];
   }
 
+  // Soporte flexible para total o configuración
+  if (typeof opcionesOTotal === 'number') {
+    totalManual = opcionesOTotal;
+  } else if (opcionesOTotal instanceof Date || typeof opcionesOTotal === 'string') {
+    fechaEmision = opcionesOTotal;
+  } else if (opcionesOTotal && typeof opcionesOTotal === 'object') {
+    if (opcionesOTotal.total !== undefined) totalManual = opcionesOTotal.total;
+    if (opcionesOTotal.fecha) fechaEmision = opcionesOTotal.fecha;
+  }
+
   const doc = new jsPDF();
   const yDespuesCliente = agregarDatosClienteYFecha(doc, datosCliente, fechaEmision);
-  agregarDetalleProductos(doc, items, yDespuesCliente);
+  const yDespuesProductos = agregarDetalleProductos(doc, items, yDespuesCliente);
+  agregarTotalCompra(doc, items, totalManual, yDespuesProductos);
+
+  return doc;
+};
+
+/**
+ * Genera y descarga el documento PDF con el nombre boleta-compra.pdf.
+ * 
+ * @param {Object} datosCliente - Datos del cliente
+ * @param {Array<Object>} [productos=[]] - Lista de productos
+ * @param {Object|number|null} [opcionesOTotal=null] - Total o configuración
+ * @param {string} [nombreArchivo='boleta-compra.pdf'] - Nombre del archivo a descargar
+ * @returns {jsPDF}
+ */
+export const descargarBoletaPDF = (
+  datosCliente = {},
+  productos = [],
+  opcionesOTotal = null,
+  nombreArchivo = 'boleta-compra.pdf'
+) => {
+  const doc = generarBoletaPDF(datosCliente, productos, opcionesOTotal);
+  doc.save(nombreArchivo);
   return doc;
 };
 
 export const boletaService = {
   generarBoletaPDF,
+  descargarBoletaPDF,
   agregarDatosClienteYFecha,
   agregarDetalleProductos,
+  agregarTotalCompra,
 };
 
 export default boletaService;
