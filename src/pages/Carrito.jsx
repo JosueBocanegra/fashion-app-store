@@ -207,12 +207,12 @@ const Carrito = () => {
                 </div>
               </div>
 
-              <button
-                className="w-full bg-purple-600 text-white py-3 rounded-xl font-semibold hover:bg-purple-700 transition-all"
-                onClick={() => alert("Funcionalidad de compra próximamente")}
+              <Link
+                to="/datos-cliente"
+                className="w-full block text-center bg-purple-600 text-white py-3 rounded-xl font-semibold hover:bg-purple-700 transition-all cursor-pointer"
               >
                 Continuar compra
-              </button>
+              </Link>
 
               <Link
                 to="/productos"

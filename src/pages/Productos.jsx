@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Filter, X, Tag, Search, AlertTriangle } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
-import ProductCard from '../components/ProductCard';
 import { productosService } from '../services/productosService';
+import ProductCard from '../components/ProductCard';
+import { Filter, X, Tag, Search, AlertTriangle } from 'lucide-react';
 
 const Productos = () => {
   const [searchParams] = useSearchParams();

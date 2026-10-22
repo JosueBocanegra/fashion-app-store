@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { User, Mail, Phone, MapPin, CheckCircle, ArrowRight } from 'lucide-react';
+import { User, Mail, Phone, MapPin, CheckCircle, ArrowRight, Download, FileText } from 'lucide-react';
+import { descargarBoletaPDF } from '../services/boletaService';
 
 // clave donde se guardan los datos para el resumen de compra
 const CLAVE_STORAGE = "datosCliente";
@@ -23,6 +24,7 @@ const DatosCliente = () => {
     const datosGuardados = sessionStorage.getItem(CLAVE_STORAGE);
     if (datosGuardados) {
       setFormData(JSON.parse(datosGuardados));
+      setGuardado(true);
     }
   }, []);
 
@@ -150,6 +152,31 @@ const DatosCliente = () => {
     setGuardado(false);
   };
 
+  const obtenerProductosCompra = () => {
+    try {
+      const guardados = sessionStorage.getItem('carrito') || localStorage.getItem('carrito');
+      if (guardados) {
+        const parsed = JSON.parse(guardados);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    // Productos de ejemplo para la compra si aún no se inicializó el carrito
+    return [
+      { id: '1', nombre: 'Casaca de cuero', cantidad: 1, precioUnitario: 50, subtotal: 50 },
+      { id: '3', nombre: 'Shorts casual', cantidad: 2, precioUnitario: 20, subtotal: 40 }
+    ];
+  };
+
+  const handleDescargarBoleta = () => {
+    const productos = obtenerProductosCompra();
+    descargarBoletaPDF(formData, productos, null, 'boleta-compra.pdf');
+  };
+
   const obtenerClaseInput = (campo) => {
     if (!tocados[campo]) return "border-slate-200";
     if (errores[campo]) return "border-red-400 focus:ring-red-500";
@@ -161,6 +188,13 @@ const DatosCliente = () => {
   const esBotonDeshabilitado =
     hayCamposVacios ||
     Object.values(errores).some(error => error);
+
+  const productosCompra = obtenerProductosCompra();
+  const totalCompra = productosCompra.reduce((acc, it) => {
+    const cant = Number(it.cantidad) || 1;
+    const precio = Number(it.precioFinal ?? it.precioUnitario ?? it.precio ?? 0);
+    return acc + Number(it.subtotal ?? (cant * precio));
+  }, 0);
 
   // lista de campos para no repetir el mismo input 5 veces
   const campos = [
@@ -187,14 +221,24 @@ const DatosCliente = () => {
         <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8 border border-slate-100">
 
           {guardado && (
-            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl mb-6">
-              <div className="flex items-center gap-2 font-semibold">
-                <CheckCircle className="w-5 h-5" />
-                ¡Datos registrados correctamente!
+            <div className="bg-green-50 border border-green-200 text-green-700 p-4 rounded-xl mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 font-semibold">
+                  <CheckCircle className="w-5 h-5" />
+                  ¡Datos registrados correctamente!
+                </div>
+                <p className="text-sm mt-1">
+                  {formData.nombre} {formData.apellido}, tus datos se usarán en el resumen de compra.
+                </p>
               </div>
-              <p className="text-sm mt-1">
-                {formData.nombre} {formData.apellido}, tus datos se usarán en el resumen de compra.
-              </p>
+              <button
+                type="button"
+                onClick={handleDescargarBoleta}
+                className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-medium px-4 py-2.5 rounded-xl shadow-md transition-all duration-300 hover:scale-105 cursor-pointer text-sm whitespace-nowrap"
+              >
+                <Download className="w-4 h-4" />
+                Descargar resumen en PDF
+              </button>
             </div>
           )}
 
@@ -235,7 +279,7 @@ const DatosCliente = () => {
               <button
                 type="button"
                 onClick={limpiarFormulario}
-                className="sm:w-1/3 py-3 rounded-xl font-semibold border border-slate-200 text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+                className="sm:w-1/4 py-3 rounded-xl font-semibold border border-slate-200 text-slate-600 hover:bg-slate-50 transition cursor-pointer"
               >
                 Limpiar
               </button>
@@ -252,8 +296,73 @@ const DatosCliente = () => {
                 Confirmar datos
                 <ArrowRight className="w-5 h-5" />
               </button>
+
+              <button
+                type="button"
+                onClick={handleDescargarBoleta}
+                disabled={esBotonDeshabilitado}
+                className={`py-3 px-5 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 border shadow-sm ${
+                  esBotonDeshabilitado
+                    ? "border-slate-200 text-slate-400 bg-slate-50 cursor-not-allowed"
+                    : "border-purple-600 text-purple-600 hover:bg-purple-50 hover:scale-[1.02] cursor-pointer"
+                }`}
+                title="Descargar comprobante de compra en formato PDF"
+              >
+                <Download className="w-5 h-5" />
+                Descargar resumen en PDF
+              </button>
             </div>
           </form>
+
+          {/* Sección de Resumen de Compra visible una vez confirmados los datos */}
+          {guardado && (
+            <div className="mt-8 pt-6 border-t border-slate-100">
+              <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200/80 mb-6">
+                <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-200">
+                  <div className="flex items-center gap-2 font-bold text-slate-800 text-lg">
+                    <FileText className="w-5 h-5 text-purple-600" />
+                    Resumen de Compra
+                  </div>
+                  <span className="text-xs bg-purple-100 text-purple-700 font-semibold px-2.5 py-1 rounded-full">
+                    {productosCompra.length} artículos
+                  </span>
+                </div>
+
+                <div className="divide-y divide-slate-200/70">
+                  {productosCompra.map((item, idx) => {
+                    const cant = Number(item.cantidad) || 1;
+                    const precio = Number(item.precioFinal ?? item.precioUnitario ?? item.precio ?? 0);
+                    const sub = Number(item.subtotal ?? (cant * precio));
+                    return (
+                      <div key={item.id || idx} className="py-2.5 flex justify-between items-center text-sm">
+                        <div className="text-slate-700">
+                          <span className="font-medium">{item.nombre}</span>
+                          <span className="text-slate-400 text-xs ml-2">x{cant}</span>
+                        </div>
+                        <span className="font-semibold text-slate-800">S/ {sub.toFixed(2)}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-slate-200 flex justify-between items-center">
+                  <span className="text-slate-600 font-medium">Total de la compra:</span>
+                  <span className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                    S/ {totalCompra.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleDescargarBoleta}
+                className="w-full py-3.5 px-6 rounded-xl font-bold transition-all duration-300 flex items-center justify-center gap-2 shadow-lg bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white hover:scale-[1.01] shadow-purple-500/25 cursor-pointer text-base"
+              >
+                <Download className="w-5 h-5" />
+                Descargar resumen en PDF
+              </button>
+            </div>
+          )}
 
         </div>
       </div>
