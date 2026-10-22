@@ -17,7 +17,7 @@ const Navbar = () => {
   const { cantidadProductos } = useCarrito();
 
   return (
-    <nav className="bg-gradient-to-r from-slate-900 via-purple-900 to-indigo-900 sticky top-0 z-50 shadow-2xl border-b border-white/10">
+    <nav className="bg-gradient-to-r from-slate-900 via-purple-900 to-indigo-900 sticky top-0 z-60 shadow-2xl border-b border-white/10">
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
