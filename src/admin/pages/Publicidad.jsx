@@ -249,7 +249,7 @@ const Publicidad = () => {
 
       {modalOpen && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl w-full max-w-lg p-6">
+          <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
             <h2 className="text-lg font-medium text-neutral-900 mb-4">
               {editando ? "Editar publicidad" : "Nueva publicidad"}
             </h2>
@@ -312,6 +312,57 @@ const Publicidad = () => {
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:border-[#8a5a63] focus:ring-2 focus:ring-[#8a5a63]/10"
                 />
+              </div>
+
+              {/* Vista previa de la publicidad */}
+              <div className="mt-5 border border-stone-200 rounded-xl overflow-hidden">
+                <div className="bg-stone-50 px-4 py-2 border-b border-stone-200">
+                  <p className="text-xs font-medium uppercase tracking-wider text-neutral-500">
+                    Vista previa del anuncio
+                  </p>
+                </div>
+
+                <div className="p-4">
+                  {form.imagen ? (
+                    <img
+                      src={
+                        form.imagen.startsWith("http") || form.imagen.startsWith("data:")
+                          ? form.imagen
+                          : `/${form.imagen.replace(/^\/+/, "")}`
+                      }
+                      alt={form.titulo || "Imagen de publicidad"}
+                      className="w-full h-40 object-cover rounded-lg mb-3"
+                    />
+                  ) : (
+                    <div className="w-full h-32 bg-stone-100 rounded-lg mb-3 flex items-center justify-center">
+                      <span className="text-sm text-neutral-400">
+                        Sin imagen seleccionada
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h3 className="text-lg font-medium text-neutral-900 break-words">
+                        {form.titulo || "Título de la publicidad"}
+                      </h3>
+
+                      <p className="text-sm text-neutral-500 mt-1 whitespace-pre-line break-words">
+                        {form.descripcion || "Aquí aparecerá la descripción del anuncio."}
+                      </p>
+                    </div>
+
+                    {Number(form.descuento) > 0 && (
+                      <span className="shrink-0 bg-[#8a5a63] text-white text-sm font-semibold px-3 py-1 rounded-full">
+                        {form.descuento}% OFF
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="text-xs text-neutral-400 mt-3">
+                    Estado: {form.estado ? "Activa" : "Inactiva"}
+                  </p>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
