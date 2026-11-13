@@ -19,7 +19,7 @@ export const clientesService = {
 
   async actualizarCliente(id, cliente) {
     const response = await fetch(`${API_URL}/${id}`, {
-      method: 'PUT',
+      method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(cliente),
     });

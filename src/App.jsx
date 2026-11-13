@@ -10,6 +10,8 @@ import Carrito from "./pages/Carrito";
 import NotFound from "./pages/NotFound";
 import Login from "./admin/pages/Login";
 import AdminRoutes from "./admin/routes/AdminRoutes";
+import LoginCliente from "./pages/LoginCliente";
+import RegistroCliente from "./pages/RegistroCliente";
 
 // público
 function PublicLayout() {
@@ -24,6 +26,8 @@ function PublicLayout() {
           <Route path="/contacto" element={<Contacto />} />
           <Route path="/datos-cliente" element={<DatosCliente />} />
           <Route path="/carrito" element={<Carrito />} />
+          <Route path="/login-cliente" element={<LoginCliente />} />
+          <Route path="/registro-cliente" element={<RegistroCliente />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>

@@ -1,0 +1,33 @@
+name: CI - Fashion Store
+
+on:
+  push:
+    branches:
+      - main
+      - feat/registro-login-clientes
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Ejecutar pruebas
+        run: npm run test:run
+
+      - name: Construir proyecto
+        run: npm run build
