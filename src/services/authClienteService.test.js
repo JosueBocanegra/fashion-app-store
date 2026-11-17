@@ -22,7 +22,6 @@ const clientesIniciales = [
 describe("Servicio de autenticación de clientes", () => {
   beforeEach(() => {
     localStorage.clear();
-
     globalThis.fetch = vi.fn();
   });
 
@@ -115,4 +114,45 @@ describe("Servicio de autenticación de clientes", () => {
 
     expect(obtenerSesionCliente()).toBeNull();
   });
+
+  it("debe permitir completar la cuenta de un cliente invitado", async () => {
+    fetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [
+          {
+            id: "cliente-invitado",
+            nombre: "Maria",
+            apellido: "Lopez",
+            email: "maria@example.com",
+            esInvitado: true,
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          id: "cliente-invitado",
+          nombre: "Maria",
+          apellido: "Lopez",
+          email: "maria@example.com",
+          password: "123456",
+          esInvitado: false,
+        }),
+      });
+
+    const resultado = await registrarCliente({
+      nombre: "Maria",
+      apellido: "Lopez",
+      email: "maria@example.com",
+      password: "123456",
+    });
+
+    expect(resultado.id).toBe("cliente-invitado");
+    expect(resultado.esInvitado).toBe(false);
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(fetch.mock.calls[1][1].method).toBe("PATCH");
+  });
 });
+
+

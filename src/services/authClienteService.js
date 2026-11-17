@@ -1,4 +1,3 @@
-
 const API_URL = "http://localhost:3001/clientes";
 const CLAVE_SESION = "clienteUser";
 
@@ -13,25 +12,52 @@ async function obtenerClientes() {
   return await response.json();
 }
 
-// Registrar una nueva cuenta
+// Registrar una nueva cuenta o completar un cliente invitado
 export async function registrarCliente(datos) {
   const clientes = await obtenerClientes();
 
   const email = datos.email.trim().toLowerCase();
 
-  const correoExiste = clientes.some(
-    (cliente) => cliente.email.toLowerCase() === email
+  const clienteExistente = clientes.find(
+    (cliente) => cliente.email?.trim().toLowerCase() === email
   );
 
-  if (correoExiste) {
+  // Si existe una cuenta normal, no permitir duplicados
+  if (clienteExistente && !clienteExistente.esInvitado) {
     throw new Error("Este correo ya está registrado.");
   }
 
-  const nuevoCliente = {
+  const datosCuenta = {
     nombre: datos.nombre.trim(),
     apellido: datos.apellido.trim(),
     email,
     password: datos.password,
+    esInvitado: false,
+  };
+
+  // Completar la cuenta de un cliente invitado
+  if (clienteExistente) {
+    const response = await fetch(
+      `${API_URL}/${clienteExistente.id}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(datosCuenta),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("No se pudo completar el registro del cliente.");
+    }
+
+    return await response.json();
+  }
+
+  // Registrar un cliente nuevo
+  const nuevoCliente = {
+    ...datosCuenta,
     fechaRegistro: new Date().toISOString(),
   };
 
@@ -102,3 +128,5 @@ export function obtenerSesionCliente() {
 export function cerrarSesionCliente() {
   localStorage.removeItem(CLAVE_SESION);
 }
+
+
