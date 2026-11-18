@@ -79,6 +79,23 @@ const obtenerCantidadProductos = (venta) => {
   );
 };
 
+// Utiliza el subtotal guardado o lo calcula para ventas antiguas.
+const obtenerSubtotalItem = (item) => {
+  const tieneSubtotal =
+    item?.subtotal !== undefined &&
+    item?.subtotal !== null &&
+    item?.subtotal !== "";
+
+  if (tieneSubtotal && Number.isFinite(Number(item.subtotal))) {
+    return Number(item.subtotal);
+  }
+
+  return (
+    (Number(item?.cantidad) || 0) *
+    (Number(item?.precioUnitario) || 0)
+  );
+};
+
 // Resuelve el nombre del cliente asociado a una venta.
 const obtenerNombreCliente = (venta, clientesPorId) => {
   if (!venta.clienteId) return "Sin cliente asociado";
@@ -132,6 +149,7 @@ const Ventas = () => {
   const [filtroEstado, setFiltroEstado] = useState("");
   const [fechaDesde, setFechaDesde] = useState("");
   const [fechaHasta, setFechaHasta] = useState("");
+  const [ventaSeleccionada, setVentaSeleccionada] = useState(null);
 
   // Carga ventas y clientes para relacionar cada operación
   // con su correspondiente registro de cliente.
@@ -254,6 +272,14 @@ const Ventas = () => {
     setFechaDesde("");
     setFechaHasta("");
   };
+
+  const clienteVentaSeleccionada = ventaSeleccionada?.clienteId
+    ? clientesPorId.get(String(ventaSeleccionada.clienteId)) || null
+    : null;
+
+  const itemsVentaSeleccionada = Array.isArray(ventaSeleccionada?.items)
+    ? ventaSeleccionada.items
+    : [];
 
   return (
     <div>
@@ -424,7 +450,7 @@ const Ventas = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[850px] text-sm">
+            <table className="w-full min-w-[950px] text-sm">
               <thead>
                 <tr className="bg-stone-50 text-neutral-500 text-left
                                uppercase text-xs tracking-wider">
@@ -434,6 +460,7 @@ const Ventas = () => {
                   <th className="px-5 py-3 text-center">Productos</th>
                   <th className="px-5 py-3 text-right">Total</th>
                   <th className="px-5 py-3 text-center">Estado</th>
+                  <th className="px-5 py-3 text-center">Acciones</th>
                 </tr>
               </thead>
 
@@ -492,6 +519,17 @@ const Ventas = () => {
                           {estado}
                         </span>
                       </td>
+
+                      <td className="px-5 py-3.5 text-center">
+                        <button
+                          type="button"
+                          onClick={() => setVentaSeleccionada(venta)}
+                          className="text-[#8a5a63] hover:text-[#754b53]
+                                    font-semibold text-xs transition-colors"
+                        >
+                          Ver detalle
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}
@@ -500,6 +538,286 @@ const Ventas = () => {
           </div>
         )}
       </div>
+
+      {/* Modal de detalle de venta */}
+      {ventaSeleccionada && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center
+                     p-4 bg-black/45 backdrop-blur-xs"
+          onClick={() => setVentaSeleccionada(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl border border-stone-200
+                       w-full max-w-3xl max-h-[90vh] overflow-y-auto"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="detalle-venta-titulo"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Encabezado */}
+            <div className="px-6 py-5 border-b border-stone-100
+                            flex items-start justify-between gap-4"
+            >
+              <div>
+                <h2
+                  id="detalle-venta-titulo"
+                  className="text-xl font-semibold text-neutral-900"
+                >
+                  Detalle de venta
+                </h2>
+
+                <p className="text-sm text-neutral-500 mt-1">
+                  Información completa de la operación.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setVentaSeleccionada(null)}
+                aria-label="Cerrar detalle"
+                className="w-9 h-9 rounded-lg flex items-center
+                           justify-center text-neutral-500
+                           hover:bg-stone-100 hover:text-neutral-900
+                           transition-colors text-xl"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Información general */}
+              <section>
+                <div className="flex flex-col sm:flex-row
+                                sm:items-center sm:justify-between gap-3"
+                >
+                  <div>
+                    <p className="text-xs text-neutral-500 mb-1">
+                      Código de venta
+                    </p>
+
+                    <p className="text-lg font-bold text-neutral-900">
+                      #{ventaSeleccionada.id || "Sin código"}
+                    </p>
+                  </div>
+
+                  <span
+                    className={`inline-flex items-center px-3 py-1.5
+                                rounded-full border text-xs font-semibold
+                                w-fit
+                                ${obtenerClaseEstado(
+                                  normalizarEstado(ventaSeleccionada.estado)
+                                )}`}
+                  >
+                    {normalizarEstado(ventaSeleccionada.estado)}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-5">
+                  <div className="bg-stone-50 rounded-xl p-4">
+                    <p className="text-xs text-neutral-500">
+                      Fecha de compra
+                    </p>
+
+                    <p className="text-sm font-medium text-neutral-800 mt-1">
+                      {formatearFecha(ventaSeleccionada.fecha)}
+                    </p>
+                  </div>
+
+                  <div className="bg-stone-50 rounded-xl p-4">
+                    <p className="text-xs text-neutral-500">
+                      Cantidad de productos
+                    </p>
+
+                    <p className="text-sm font-medium text-neutral-800 mt-1">
+                      {obtenerCantidadProductos(ventaSeleccionada)} unidades
+                    </p>
+                  </div>
+                </div>
+              </section>
+
+              {/* Datos del cliente */}
+              <section>
+                <div className="mb-3">
+                  <h3 className="text-sm font-semibold text-neutral-900">
+                    Información del cliente
+                  </h3>
+
+                  <p className="text-xs text-neutral-500 mt-0.5">
+                    Datos asociados a la compra.
+                  </p>
+                </div>
+
+                <div className="border border-stone-200 rounded-xl p-4">
+                  <div className="mb-4">
+                    <p className="text-xs text-neutral-500">
+                      Nombre completo
+                    </p>
+
+                    <p className="text-sm font-semibold text-neutral-800 mt-1">
+                      {obtenerNombreCliente(
+                        ventaSeleccionada,
+                        clientesPorId
+                      )}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-neutral-500">
+                        Correo electrónico
+                      </p>
+
+                      <p className="text-sm text-neutral-700 mt-1 break-all">
+                        {clienteVentaSeleccionada?.email || "No registrado"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs text-neutral-500">
+                        Teléfono
+                      </p>
+
+                      <p className="text-sm text-neutral-700 mt-1">
+                        {clienteVentaSeleccionada?.telefono || "No registrado"}
+                      </p>
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <p className="text-xs text-neutral-500">
+                        Dirección
+                      </p>
+
+                      <p className="text-sm text-neutral-700 mt-1">
+                        {clienteVentaSeleccionada?.direccion || "No registrada"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {!clienteVentaSeleccionada && (
+                    <p className="text-xs text-amber-700 mt-3
+                                  bg-amber-50 border border-amber-100
+                                  rounded-lg p-2.5"
+                    >
+                      No se encontró el registro del cliente relacionado
+                      con esta venta.
+                    </p>
+                  )}
+                </div>
+              </section>
+
+              {/* Productos adquiridos */}
+              <section>
+                <div className="mb-3">
+                  <h3 className="text-sm font-semibold text-neutral-900">
+                    Productos adquiridos
+                  </h3>
+
+                  <p className="text-xs text-neutral-500 mt-0.5">
+                    Detalle de los artículos incluidos en la operación.
+                  </p>
+                </div>
+
+                <div className="border border-stone-200 rounded-xl overflow-hidden">
+                  {itemsVentaSeleccionada.length === 0 ? (
+                    <p className="p-5 text-sm text-neutral-500 text-center">
+                      Esta venta no tiene productos registrados.
+                    </p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full min-w-[520px] text-sm">
+                        <thead>
+                          <tr className="bg-stone-50 text-neutral-500
+                                         text-xs uppercase tracking-wider
+                                         text-left"
+                          >
+                            <th className="px-4 py-3">Producto</th>
+                            <th className="px-4 py-3 text-center">
+                              Cantidad
+                            </th>
+                            <th className="px-4 py-3 text-right">
+                              Precio unitario
+                            </th>
+                            <th className="px-4 py-3 text-right">
+                              Subtotal
+                            </th>
+                          </tr>
+                        </thead>
+
+                        <tbody>
+                          {itemsVentaSeleccionada.map((item, index) => (
+                            <tr
+                              key={`${item.productoId || "producto"}-${index}`}
+                              className="border-t border-stone-100"
+                            >
+                              <td className="px-4 py-3 text-neutral-800
+                                             font-medium"
+                              >
+                                {item.nombre ||
+                                  `Producto ${item.productoId || index + 1}`}
+                              </td>
+
+                              <td className="px-4 py-3 text-center
+                                             text-neutral-600"
+                              >
+                                {Number(item.cantidad) || 0}
+                              </td>
+
+                              <td className="px-4 py-3 text-right
+                                             text-neutral-600"
+                              >
+                                {formatearMoneda(item.precioUnitario)}
+                              </td>
+
+                              <td className="px-4 py-3 text-right
+                                             font-medium text-neutral-800"
+                              >
+                                {formatearMoneda(
+                                  obtenerSubtotalItem(item)
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              {/* Total */}
+              <section className="bg-stone-50 border border-stone-200
+                                  rounded-xl p-5"
+              >
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-sm font-medium text-neutral-600">
+                    Total de la venta
+                  </span>
+
+                  <span className="text-xl font-bold text-[#8a5a63]">
+                    {formatearMoneda(ventaSeleccionada.total)}
+                  </span>
+                </div>
+              </section>
+            </div>
+
+            {/* Pie */}
+            <div className="px-6 py-4 border-t border-stone-100
+                            flex justify-end"
+            >
+              <button
+                type="button"
+                onClick={() => setVentaSeleccionada(null)}
+                className="px-5 py-2.5 rounded-xl text-sm font-medium
+                           text-neutral-700 bg-stone-100
+                           hover:bg-stone-200 transition-colors"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
