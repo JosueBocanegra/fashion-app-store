@@ -5,6 +5,7 @@ import Clientes from "../pages/Clientes";
 import Usuarios from "../pages/Usuarios";
 import Publicidad from "../pages/Publicidad";
 import Productos from "../pages/Productos";
+import Ventas from "../pages/Ventas";
 
 const ProtectedRoute = ({ children }) => {
   const user = localStorage.getItem("adminUser");
@@ -24,13 +25,7 @@ const AdminRoutes = () => (
       <Route path="clientes" element={<Clientes />} />
       <Route path="usuarios" element={<Usuarios />} />
       <Route path="publicidad" element={<Publicidad />} />
-      {/*
-          
-          <Route path="productos"  element={<Productos />} />
-          <Route path="usuarios"   element={<Usuarios />} />
-          <Route path="publicidad" element={<Publicidad />} />
-          <Route path="usuarios" element={<Usuarios />} />
-      */}
+      <Route path="ventas" element={<Ventas />} />
     </Route>
   </Routes>
 );

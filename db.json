@@ -99,8 +99,8 @@
     {
       "id": "1",
       "nombre": "Administrador",
-      "email": "admin@fashion.com",
-      "password": "admin123",
+      "email": "admin@gmail.com",
+      "password": "123456",
       "rol": "admin"
     },
     {
