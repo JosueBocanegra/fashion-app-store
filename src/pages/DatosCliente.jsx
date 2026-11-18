@@ -63,7 +63,10 @@ const obtenerCompraFinalizada = () => {
 };
 
 const DatosCliente = () => {
-  const { cliente } = useAuthCliente();
+  const {
+    cliente,
+    actualizarDatosContacto,
+  } = useAuthCliente();
 
   const {
     carrito,
@@ -115,7 +118,7 @@ const DatosCliente = () => {
     } else {
       setDatosConfirmados(false);
     }
-  }, [cliente?.id]);
+  }, [cliente]);
 
   // ----------------------------------------
   // VALIDACIÓN DEL FORMULARIO
@@ -314,6 +317,30 @@ const DatosCliente = () => {
       return;
     }
 
+    // Validar los datos opcionales del cliente autenticado.
+    if (esClienteAutenticado) {
+      const erroresContacto = {
+        telefono: validarCampo("telefono", formData.telefono),
+        direccion: validarCampo("direccion", formData.direccion),
+      };
+
+      setTocados((prev) => ({
+        ...prev,
+        telefono: true,
+        direccion: true,
+      }));
+
+      setErrores((prev) => ({
+        ...prev,
+        ...erroresContacto,
+      }));
+
+      if (Object.values(erroresContacto).some(Boolean)) {
+        setErrorCompra("Revisa los datos de contacto antes de continuar.");
+        return;
+      }
+    }
+
     if (!esClienteAutenticado && !datosConfirmados) {
       setErrorCompra("Primero debes confirmar tus datos personales.");
       return;
@@ -328,15 +355,38 @@ const DatosCliente = () => {
           nombre: cliente.nombre || "",
           apellido: cliente.apellido || "",
           email: cliente.email || "",
-          telefono: cliente.telefono || "",
-          direccion: cliente.direccion || "",
+          telefono: formData.telefono.trim(),
+          direccion: formData.direccion.trim(),
         }
       : { ...formData };
 
     try {
+      // Actualizar los datos de contacto de la cuenta, en caso el cliente modificó algún campo.
+      let clienteParaVenta = esClienteAutenticado ? cliente : null;
+
+      if (esClienteAutenticado) {
+        const contactoAnterior = {
+          telefono: cliente.telefono || "",
+          direccion: cliente.direccion || "",
+        };
+
+        const contactoNuevo = {
+          telefono: datosClienteCompra.telefono,
+          direccion: datosClienteCompra.direccion,
+        };
+
+        const contactoModificado =
+          contactoAnterior.telefono !== contactoNuevo.telefono ||
+          contactoAnterior.direccion !== contactoNuevo.direccion;
+
+        if (contactoModificado) {
+          clienteParaVenta = await actualizarDatosContacto(contactoNuevo);
+        }
+      }
+
       // Registrar la venta en json-server.
       const venta = await registrarVenta({
-        cliente: esClienteAutenticado ? cliente : null,
+        cliente: clienteParaVenta,
         datosCliente: datosClienteCompra,
         carrito: [...carrito],
       });
@@ -609,6 +659,27 @@ const DatosCliente = () => {
                       {compraFinalizada.datosCliente.apellido}
                     </span>
                   </div>
+
+                  <div className="flex justify-between gap-3">
+                    <span className="text-slate-500">Correo</span>
+                    <span className="font-medium text-slate-700 text-right">
+                      {compraFinalizada.datosCliente.email}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between gap-3">
+                    <span className="text-slate-500">Teléfono</span>
+                    <span className="font-medium text-slate-700 text-right">
+                      {compraFinalizada.datosCliente.telefono || "No proporcionado"}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between gap-3">
+                    <span className="text-slate-500">Dirección</span>
+                    <span className="font-medium text-slate-700 text-right">
+                      {compraFinalizada.datosCliente.direccion || "No proporcionada"}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Detalle de productos */}
@@ -699,16 +770,84 @@ const DatosCliente = () => {
                       <span className="font-semibold">Correo:</span>{" "}
                       {cliente.email}
                     </p>
+                  </div>
 
-                    <p className="text-slate-700">
-                      <span className="font-semibold">Teléfono:</span>{" "}
-                      {cliente.telefono || "No registrado"}
+                  <div className="mt-5 pt-4 border-t border-purple-200">
+                    <h3 className="font-semibold text-slate-800 mb-3">
+                      Datos de contacto
+                    </h3>
+
+                    <p className="text-xs text-slate-500 mb-4">
+                      Completa o actualiza estos datos, se guardarán en tu cuenta para próximas compras.
                     </p>
 
-                    <p className="text-slate-700">
-                      <span className="font-semibold">Dirección:</span>{" "}
-                      {cliente.direccion || "No registrada"}
-                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                      {/* Teléfono */}
+                      <div>
+                        <label
+                          htmlFor="telefono-cliente"
+                          className="block text-slate-700 font-medium mb-2 text-sm"
+                        >
+                          <Phone className="w-4 h-4 inline mr-1" />
+                          Teléfono
+                          <span className="text-slate-400 text-xs ml-1">
+                            (opcional)
+                          </span>
+                        </label>
+
+                        <input
+                          id="telefono-cliente"
+                          type="tel"
+                          name="telefono"
+                          value={formData.telefono || ""}
+                          onChange={handleChange}
+                          onBlur={handleBlur}
+                          maxLength={9}
+                          placeholder="987654321"
+                          className={`w-full px-4 py-2.5 border rounded-xl focus:outline-none focus:ring-2 transition ${obtenerClaseInput("telefono")}`}
+                        />
+
+                        {tocados.telefono && errores.telefono && (
+                          <p className="text-red-500 text-sm mt-1">
+                            {errores.telefono}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Dirección */}
+                      <div>
+                        <label
+                          htmlFor="direccion-cliente"
+                          className="block text-slate-700 font-medium mb-2 text-sm"
+                        >
+                          <MapPin className="w-4 h-4 inline mr-1" />
+                          Dirección
+                          <span className="text-slate-400 text-xs ml-1">
+                            (opcional)
+                          </span>
+                        </label>
+
+                        <input
+                          id="direccion-cliente"
+                          type="text"
+                          name="direccion"
+                          value={formData.direccion || ""}
+                          onChange={handleChange}
+                          onBlur={handleBlur}
+                          maxLength={100}
+                          placeholder="Av. Principal 123, Chiclayo"
+                          className={`w-full px-4 py-2.5 border rounded-xl focus:outline-none focus:ring-2 transition ${obtenerClaseInput("direccion")}`}
+                        />
+
+                        {tocados.direccion && errores.direccion && (
+                          <p className="text-red-500 text-sm mt-1">
+                            {errores.direccion}
+                          </p>
+                        )}
+                      </div>
+
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -826,10 +965,12 @@ const DatosCliente = () => {
                           <strong>Correo:</strong> {formData.email}
                         </p>
                         <p>
-                          <strong>Teléfono:</strong> {formData.telefono}
+                          <strong>Teléfono:</strong>{" "}
+                          {formData.telefono || "No proporcionado"}
                         </p>
                         <p>
-                          <strong>Dirección:</strong> {formData.direccion}
+                          <strong>Dirección:</strong>{" "}
+                          {formData.direccion || "No proporcionada"}
                         </p>
                       </div>
 

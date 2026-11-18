@@ -171,6 +171,27 @@
       "esInvitado": false,
       "fechaRegistro": "2026-11-18T03:00:26.157Z",
       "id": "SnQEbK0oZug"
+    },
+    {
+      "nombre": "josue",
+      "apellido": "bocanegra",
+      "email": "josue@gmail.com",
+      "password": "123456",
+      "telefono": "977666522",
+      "direccion": "",
+      "esInvitado": false,
+      "fechaRegistro": "2026-11-18T04:11:18.676Z",
+      "id": "OdF3Xbvpuhg"
+    },
+    {
+      "nombre": "Santiago",
+      "apellido": "Quiroga",
+      "email": "santiago@gmail.com",
+      "telefono": "",
+      "direccion": "",
+      "fechaRegistro": "2026-11-18T04:13:55.691Z",
+      "esInvitado": true,
+      "id": "RZMgYONvntQ"
     }
   ],
   "ventas": [
@@ -257,6 +278,38 @@
       "total": 40,
       "estado": "Pendiente",
       "id": "47HMOhI6r-Y"
+    },
+    {
+      "fecha": "2026-11-18T04:12:11.683Z",
+      "clienteId": "OdF3Xbvpuhg",
+      "items": [
+        {
+          "productoId": "6",
+          "nombre": "Camisa Perú",
+          "cantidad": 1,
+          "precioUnitario": 85,
+          "subtotal": 85
+        }
+      ],
+      "total": 85,
+      "estado": "Pendiente",
+      "id": "g9yeFjcI7VA"
+    },
+    {
+      "fecha": "2026-11-18T04:13:55.698Z",
+      "clienteId": "RZMgYONvntQ",
+      "items": [
+        {
+          "productoId": "2",
+          "nombre": "Casaca impermeable",
+          "cantidad": 1,
+          "precioUnitario": 35,
+          "subtotal": 35
+        }
+      ],
+      "total": 35,
+      "estado": "Pendiente",
+      "id": "e9Nq1KBL72E"
     }
   ],
   "publicidad": [

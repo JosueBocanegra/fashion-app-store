@@ -1,9 +1,11 @@
-
 import { createContext, useContext, useState } from "react";
+
 import {
   obtenerSesionCliente,
   iniciarSesionCliente,
   cerrarSesionCliente,
+  actualizarDatosContactoCliente,
+  guardarSesionCliente,
 } from "../services/authClienteService";
 
 const AuthClienteContext = createContext();
@@ -13,8 +15,34 @@ export function AuthClienteProvider({ children }) {
 
   const login = async (email, password) => {
     const clienteAutenticado = await iniciarSesionCliente(email, password);
+
     setCliente(clienteAutenticado);
+
     return clienteAutenticado;
+  };
+
+  const actualizarDatosContacto = async (datos) => {
+    if (!cliente?.id) {
+      throw new Error("No hay un cliente autenticado.");
+    }
+
+    // Actualizar los datos en db.json.
+    const contactoActualizado = await actualizarDatosContactoCliente(
+      cliente.id,
+      datos
+    );
+
+    // Actualizar también la sesión actual.
+    const clienteActualizado = {
+      ...cliente,
+      telefono: contactoActualizado.telefono,
+      direccion: contactoActualizado.direccion,
+    };
+
+    guardarSesionCliente(clienteActualizado);
+    setCliente(clienteActualizado);
+
+    return clienteActualizado;
   };
 
   const logout = () => {
@@ -29,6 +57,7 @@ export function AuthClienteProvider({ children }) {
         autenticado: !!cliente,
         login,
         logout,
+        actualizarDatosContacto,
       }}
     >
       {children}
@@ -47,3 +76,5 @@ export function useAuthCliente() {
 
   return context;
 }
+
+

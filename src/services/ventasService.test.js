@@ -101,21 +101,41 @@ describe("Servicio de registro de ventas", () => {
 
     expect(datosNuevoCliente.email).toBe("maria@example.com");
     expect(datosNuevoCliente.esInvitado).toBe(true);
+    expect(datosNuevoCliente.telefono).toBe("987654321");
+    expect(datosNuevoCliente.direccion).toBe("Chiclayo");
 
     expect(venta.clienteId).toBe("cliente-nuevo");
   });
 
-  it("utiliza un cliente existente cuando coincide el correo", async () => {
+  it("actualiza los datos de contacto de un cliente existente antes de registrar la venta", async () => {
     fetch
+      // 1. Consultar clientes existentes.
       .mockResolvedValueOnce(
         respuesta([
           {
             id: "cliente-existente",
             nombre: "Maria",
+            apellido: "Lopez",
             email: "maria@example.com",
+            telefono: "",
+            direccion: "",
           },
         ])
       )
+
+      // 2. Actualizar teléfono y dirección del cliente.
+      .mockResolvedValueOnce(
+        respuesta({
+          id: "cliente-existente",
+          nombre: "Maria",
+          apellido: "Lopez",
+          email: "maria@example.com",
+          telefono: "987654321",
+          direccion: "Chiclayo",
+        })
+      )
+
+      // 3. Registrar la venta.
       .mockResolvedValueOnce(
         respuesta({
           id: "venta-3",
@@ -136,8 +156,41 @@ describe("Servicio de registro de ventas", () => {
       carrito: carritoPrueba,
     });
 
-    expect(fetch).toHaveBeenCalledTimes(2);
+    // Comprobar que la venta se registró correctamente.
+    expect(venta.id).toBe("venta-3");
     expect(venta.clienteId).toBe("cliente-existente");
+
+    // Deben ejecutarse las tres solicitudes.
+    expect(fetch).toHaveBeenCalledTimes(3);
+
+    // Comprobar la actualización del cliente.
+    expect(fetch.mock.calls[1][0]).toBe(
+      "http://localhost:3001/clientes/cliente-existente"
+    );
+
+    expect(fetch.mock.calls[1][1].method).toBe("PATCH");
+
+    const datosActualizados = JSON.parse(
+      fetch.mock.calls[1][1].body
+    );
+
+    expect(datosActualizados.telefono).toBe("987654321");
+    expect(datosActualizados.direccion).toBe("Chiclayo");
+
+    // Comprobar que después se registra la venta.
+    expect(fetch.mock.calls[2][0]).toBe(
+      "http://localhost:3001/ventas"
+    );
+
+    expect(fetch.mock.calls[2][1].method).toBe("POST");
+
+    const datosVenta = JSON.parse(
+      fetch.mock.calls[2][1].body
+    );
+
+    expect(datosVenta.clienteId).toBe("cliente-existente");
+    expect(datosVenta.total).toBe(100);
+    expect(datosVenta.estado).toBe("Pendiente");
   });
 
   it("debe exigir iniciar sesión si el correo pertenece a una cuenta registrada", async () => {
@@ -210,6 +263,7 @@ describe("Servicio de registro de ventas", () => {
       })
     ).rejects.toThrow("No se pudo registrar la compra.");
 
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 });
 

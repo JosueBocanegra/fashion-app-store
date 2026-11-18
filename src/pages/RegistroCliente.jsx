@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { registrarCliente } from "../services/authClienteService";
@@ -10,6 +9,8 @@ function RegistroCliente() {
     nombre: "",
     apellido: "",
     email: "",
+    telefono: "",
+    direccion: "",
     password: "",
     confirmarPassword: "",
   });
@@ -18,20 +19,41 @@ function RegistroCliente() {
   const [cargando, setCargando] = useState(false);
 
   const manejarCambio = (e) => {
-    setFormulario({
-      ...formulario,
-      [e.target.name]: e.target.value,
-    });
+    const { name, value } = e.target;
+
+    const nuevoValor =
+      name === "telefono" ? value.replace(/\D/g, "").slice(0, 9) : value;
+
+    setFormulario((prev) => ({
+      ...prev,
+      [name]: nuevoValor,
+    }));
   };
 
   const manejarRegistro = async (e) => {
     e.preventDefault();
     setError("");
 
-    const { nombre, apellido, email, password, confirmarPassword } = formulario;
+    const {
+      nombre,
+      apellido,
+      email,
+      telefono,
+      direccion,
+      password,
+      confirmarPassword,
+    } = formulario;
 
-    if (!nombre.trim() || !apellido.trim() || !email.trim() || !password || !confirmarPassword) {
-      setError("Todos los campos son obligatorios.");
+    if (
+      !nombre.trim() ||
+      !apellido.trim() ||
+      !email.trim() ||
+      !password ||
+      !confirmarPassword
+    ) {
+      setError(
+        "Nombre, apellido, correo y contraseña son obligatorios."
+      );
       return;
     }
 
@@ -39,6 +61,21 @@ function RegistroCliente() {
 
     if (!emailValido.test(email.trim())) {
       setError("Ingresa un correo electrónico válido.");
+      return;
+    }
+
+    if (telefono.trim() && !/^9\d{8}$/.test(telefono.trim())) {
+      setError("El teléfono debe tener 9 dígitos y empezar con 9.");
+      return;
+    }
+
+    if (direccion.trim() && direccion.trim().length < 5) {
+      setError("La dirección debe tener al menos 5 caracteres.");
+      return;
+    }
+
+    if (direccion.trim().length > 100) {
+      setError("La dirección permite un máximo de 100 caracteres.");
       return;
     }
 
@@ -59,11 +96,16 @@ function RegistroCliente() {
         nombre,
         apellido,
         email,
+        telefono,
+        direccion,
         password,
       });
 
       navigate("/login-cliente", {
-        state: { mensaje: "¡Tu cuenta fue creada correctamente! Ahora puedes iniciar sesión." },
+        state: {
+          mensaje:
+            "¡Tu cuenta fue creada correctamente! Ahora puedes iniciar sesión.",
+        },
       });
     } catch (err) {
       setError(err.message || "Ocurrió un error al registrar la cuenta.");
@@ -71,6 +113,9 @@ function RegistroCliente() {
       setCargando(false);
     }
   };
+
+  const claseInput =
+    "w-full border rounded-lg p-3 focus:ring-2 focus:ring-black outline-none";
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4 py-10">
@@ -101,7 +146,7 @@ function RegistroCliente() {
               name="nombre"
               value={formulario.nombre}
               onChange={manejarCambio}
-              className="w-full border rounded-lg p-3 focus:ring-2 focus:ring-black outline-none"
+              className={claseInput}
               placeholder="Ingresa tu nombre"
               required
             />
@@ -116,7 +161,7 @@ function RegistroCliente() {
               name="apellido"
               value={formulario.apellido}
               onChange={manejarCambio}
-              className="w-full border rounded-lg p-3 focus:ring-2 focus:ring-black outline-none"
+              className={claseInput}
               placeholder="Ingresa tu apellido"
               required
             />
@@ -131,9 +176,45 @@ function RegistroCliente() {
               name="email"
               value={formulario.email}
               onChange={manejarCambio}
-              className="w-full border rounded-lg p-3 focus:ring-2 focus:ring-black outline-none"
+              className={claseInput}
               placeholder="ejemplo@correo.com"
               required
+            />
+          </div>
+
+          {/* Datos de contacto opcionales */}
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              Teléfono{" "}
+              <span className="text-gray-400 font-normal">(opcional)</span>
+            </label>
+            <input
+              type="tel"
+              name="telefono"
+              value={formulario.telefono}
+              onChange={manejarCambio}
+              className={claseInput}
+              placeholder="987654321"
+              maxLength={9}
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Debe tener 9 dígitos y empezar con 9.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              Dirección{" "}
+              <span className="text-gray-400 font-normal">(opcional)</span>
+            </label>
+            <input
+              type="text"
+              name="direccion"
+              value={formulario.direccion}
+              onChange={manejarCambio}
+              className={claseInput}
+              placeholder="Av. Principal 123, Chiclayo"
+              maxLength={100}
             />
           </div>
 
@@ -146,7 +227,7 @@ function RegistroCliente() {
               name="password"
               value={formulario.password}
               onChange={manejarCambio}
-              className="w-full border rounded-lg p-3 focus:ring-2 focus:ring-black outline-none"
+              className={claseInput}
               placeholder="Mínimo 6 caracteres"
               minLength={6}
               required
@@ -162,7 +243,7 @@ function RegistroCliente() {
               name="confirmarPassword"
               value={formulario.confirmarPassword}
               onChange={manejarCambio}
-              className="w-full border rounded-lg p-3 focus:ring-2 focus:ring-black outline-none"
+              className={claseInput}
               placeholder="Repite tu contraseña"
               required
             />
@@ -180,7 +261,10 @@ function RegistroCliente() {
 
         <p className="text-center text-sm text-gray-600 mt-6">
           ¿Ya tienes una cuenta?{" "}
-          <Link to="/login-cliente" className="font-semibold text-black hover:underline">
+          <Link
+            to="/login-cliente"
+            className="font-semibold text-black hover:underline"
+          >
             Inicia sesión
           </Link>
         </p>
@@ -191,3 +275,5 @@ function RegistroCliente() {
 }
 
 export default RegistroCliente;
+
+

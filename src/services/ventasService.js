@@ -39,9 +39,45 @@ async function resolverClienteVenta(cliente, datosCliente) {
     );
   }
 
-  // Reutilizar clientes existentes que no tienen una cuenta.
+  // Reutilizar y actualizar los datos de un cliente
+  // existente que no tiene una cuenta registrada.
   if (clienteExistente) {
-    return clienteExistente;
+    const contactoActualizado = {
+      telefono:
+        datosCliente.telefono?.trim() ||
+        clienteExistente.telefono ||
+        "",
+
+      direccion:
+        datosCliente.direccion?.trim() ||
+        clienteExistente.direccion ||
+        "",
+    };
+
+    const huboCambios =
+      contactoActualizado.telefono !== (clienteExistente.telefono || "") ||
+      contactoActualizado.direccion !== (clienteExistente.direccion || "");
+
+    if (!huboCambios) {
+      return clienteExistente;
+    }
+
+    const respuestaActualizacion = await fetch(
+      `${API_CLIENTES}/${clienteExistente.id}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(contactoActualizado),
+      }
+    );
+
+    if (!respuestaActualizacion.ok) {
+      throw new Error("No se pudieron actualizar los datos del cliente.");
+    }
+
+    return await respuestaActualizacion.json();
   }
 
   // Registrar un nuevo cliente invitado.

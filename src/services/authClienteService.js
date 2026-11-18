@@ -1,7 +1,7 @@
 const API_URL = "http://localhost:3001/clientes";
 const CLAVE_SESION = "clienteUser";
 
-// Obtener los clientes registrados
+// Obtener los clientes registrados.
 async function obtenerClientes() {
   const response = await fetch(API_URL);
 
@@ -12,7 +12,7 @@ async function obtenerClientes() {
   return await response.json();
 }
 
-// Registrar una nueva cuenta o completar un cliente invitado
+// Registrar una nueva cuenta o completar un cliente invitado.
 export async function registrarCliente(datos) {
   const clientes = await obtenerClientes();
 
@@ -22,7 +22,6 @@ export async function registrarCliente(datos) {
     (cliente) => cliente.email?.trim().toLowerCase() === email
   );
 
-  // Si existe una cuenta normal, no permitir duplicados
   if (clienteExistente && !clienteExistente.esInvitado) {
     throw new Error("Este correo ya está registrado.");
   }
@@ -32,10 +31,12 @@ export async function registrarCliente(datos) {
     apellido: datos.apellido.trim(),
     email,
     password: datos.password,
+    telefono: datos.telefono?.trim() || clienteExistente?.telefono || "",
+    direccion: datos.direccion?.trim() || clienteExistente?.direccion || "",
     esInvitado: false,
   };
 
-  // Completar la cuenta de un cliente invitado
+  // Completar una cuenta de cliente invitado.
   if (clienteExistente) {
     const response = await fetch(
       `${API_URL}/${clienteExistente.id}`,
@@ -55,7 +56,7 @@ export async function registrarCliente(datos) {
     return await response.json();
   }
 
-  // Registrar un cliente nuevo
+  // Registrar una cuenta nueva.
   const nuevoCliente = {
     ...datosCuenta,
     fechaRegistro: new Date().toISOString(),
@@ -76,13 +77,13 @@ export async function registrarCliente(datos) {
   return await response.json();
 }
 
-// Iniciar sesión
+// Iniciar sesión.
 export async function iniciarSesionCliente(email, password) {
   const clientes = await obtenerClientes();
 
   const cliente = clientes.find(
     (c) =>
-      c.email.toLowerCase() === email.trim().toLowerCase() &&
+      c.email?.toLowerCase() === email.trim().toLowerCase() &&
       c.password === password
   );
 
@@ -104,7 +105,39 @@ export async function iniciarSesionCliente(email, password) {
   return sesion;
 }
 
-// Guardar sesión sin almacenar la contraseña
+// Actualizar el teléfono y la dirección de un cliente existente.
+export async function actualizarDatosContactoCliente(id, datos) {
+  if (!id) {
+    throw new Error("No se encontró el identificador del cliente.");
+  }
+
+  const contacto = {
+    telefono: datos.telefono?.trim() || "",
+    direccion: datos.direccion?.trim() || "",
+  };
+
+  const response = await fetch(`${API_URL}/${id}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(contacto),
+  });
+
+  if (!response.ok) {
+    throw new Error("No se pudieron actualizar los datos de contacto.");
+  }
+
+  const clienteActualizado = await response.json();
+
+  return {
+    id: clienteActualizado.id,
+    telefono: clienteActualizado.telefono || "",
+    direccion: clienteActualizado.direccion || "",
+  };
+}
+
+// Guardar sesión sin almacenar la contraseña.
 export function guardarSesionCliente(cliente) {
   const sesion = {
     id: cliente.id,
@@ -118,7 +151,7 @@ export function guardarSesionCliente(cliente) {
   localStorage.setItem(CLAVE_SESION, JSON.stringify(sesion));
 }
 
-// Obtener sesión actual
+// Obtener sesión actual.
 export function obtenerSesionCliente() {
   try {
     const sesion = localStorage.getItem(CLAVE_SESION);
@@ -128,7 +161,7 @@ export function obtenerSesionCliente() {
   }
 }
 
-// Cerrar sesión
+// Cerrar sesión.
 export function cerrarSesionCliente() {
   localStorage.removeItem(CLAVE_SESION);
 }
