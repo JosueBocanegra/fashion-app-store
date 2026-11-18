@@ -95,6 +95,8 @@ export async function iniciarSesionCliente(email, password) {
     nombre: cliente.nombre,
     apellido: cliente.apellido,
     email: cliente.email,
+    telefono: cliente.telefono || "",
+    direccion: cliente.direccion || "",
   };
 
   guardarSesionCliente(sesion);
@@ -109,6 +111,8 @@ export function guardarSesionCliente(cliente) {
     nombre: cliente.nombre,
     apellido: cliente.apellido,
     email: cliente.email,
+    telefono: cliente.telefono || "",
+    direccion: cliente.direccion || "",
   };
 
   localStorage.setItem(CLAVE_SESION, JSON.stringify(sesion));

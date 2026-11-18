@@ -140,6 +140,35 @@ describe("Servicio de registro de ventas", () => {
     expect(venta.clienteId).toBe("cliente-existente");
   });
 
+  it("debe exigir iniciar sesión si el correo pertenece a una cuenta registrada", async () => {
+    fetch.mockResolvedValueOnce(
+      respuesta([
+        {
+          id: "cliente-registrado",
+          nombre: "Maria",
+          email: "maria@example.com",
+          password: "123456",
+        },
+      ])
+    );
+
+    await expect(
+      registrarVenta({
+        datosCliente: {
+          nombre: "Maria",
+          apellido: "Lopez",
+          email: "maria@example.com",
+          telefono: "987654321",
+          direccion: "Chiclayo",
+        },
+        carrito: carritoPrueba,
+      })
+    ).rejects.toThrow("Inicia sesión");
+
+    // No debe llegar a registrar la venta.
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
   it("no registra una venta cuando el carrito está vacío", async () => {
     await expect(
       registrarVenta({

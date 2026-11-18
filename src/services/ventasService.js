@@ -6,14 +6,10 @@ const redondearMonto = (monto) =>
   Math.round((monto + Number.EPSILON) * 100) / 100;
 
 /**
- * Busca un cliente por su correo electrónico.
- * Si no existe, registra un cliente invitado.
- *
- * Si el cliente inició sesión, utiliza directamente
- * el identificador de su cuenta.
+ * Identifica al cliente que realizará la compra.
  */
 async function resolverClienteVenta(cliente, datosCliente) {
-  // Cliente que inició sesión
+  // Si inició sesión, se utiliza su identificador.
   if (cliente?.id) {
     return cliente;
   }
@@ -24,7 +20,6 @@ async function resolverClienteVenta(cliente, datosCliente) {
     throw new Error("No se encontró el correo del cliente.");
   }
 
-  // Consultar clientes existentes
   const respuestaClientes = await fetch(API_CLIENTES);
 
   if (!respuestaClientes.ok) {
@@ -33,22 +28,29 @@ async function resolverClienteVenta(cliente, datosCliente) {
 
   const clientes = await respuestaClientes.json();
 
-  // Evitar registrar nuevamente un correo existente
   const clienteExistente = clientes.find(
     (item) => item.email?.trim().toLowerCase() === email
   );
 
+  // No asociar una compra invitada a una cuenta que requiere autenticación.
+  if (clienteExistente?.password) {
+    throw new Error(
+      "Este correo pertenece a una cuenta registrada. Inicia sesión para realizar tu compra."
+    );
+  }
+
+  // Reutilizar clientes existentes que no tienen una cuenta.
   if (clienteExistente) {
     return clienteExistente;
   }
 
-  // Registrar cliente invitado
+  // Registrar un nuevo cliente invitado.
   const nuevoCliente = {
     nombre: datosCliente.nombre.trim(),
     apellido: datosCliente.apellido.trim(),
     email,
-    telefono: datosCliente.telefono.trim(),
-    direccion: datosCliente.direccion.trim(),
+    telefono: datosCliente.telefono?.trim() || "",
+    direccion: datosCliente.direccion?.trim() || "",
     fechaRegistro: new Date().toISOString(),
     esInvitado: true,
   };
@@ -69,24 +71,18 @@ async function resolverClienteVenta(cliente, datosCliente) {
 }
 
 /**
- * Registra automáticamente una venta en db.json.
- *
- * @param {Object} parametros
- * @param {Object|null} parametros.cliente Cliente autenticado.
- * @param {Object} parametros.datosCliente Datos del formulario.
- * @param {Array} parametros.carrito Productos seleccionados.
+ * Registra una compra en db.json.
  */
 export async function registrarVenta({
   cliente = null,
   datosCliente = {},
   carrito = [],
 }) {
-  // Validar que existan productos
   if (!Array.isArray(carrito) || carrito.length === 0) {
     throw new Error("No hay productos en el carrito.");
   }
 
-  // Preparar los productos para el registro
+  // Preparar los productos de la venta.
   const items = carrito.map((producto) => {
     const productoId = producto.id ?? producto.productoId;
     const cantidad = Number(producto.cantidad);
@@ -119,23 +115,24 @@ export async function registrarVenta({
     };
   });
 
-  // Calcular el importe total
+  // Calcular el total a partir de los productos preparados.
   const total = redondearMonto(
     items.reduce((acumulado, item) => acumulado + item.subtotal, 0)
   );
 
-  // Obtener el cliente que estará asociado a la venta
+  // Resolver el cliente.
   const clienteVenta = await resolverClienteVenta(
     cliente,
     datosCliente
   );
 
   if (!clienteVenta?.id) {
-    throw new Error("No se pudo obtener el identificador del cliente.");
+    throw new Error(
+      "No se pudo obtener el identificador del cliente."
+    );
   }
 
-  // Preparar el registro de la venta
-  // El identificador será generado por json-server.
+  // Preparar la venta.
   const nuevaVenta = {
     fecha: new Date().toISOString(),
     clienteId: String(clienteVenta.id),
@@ -144,7 +141,8 @@ export async function registrarVenta({
     estado: "Pendiente",
   };
 
-  // Registrar venta en json-server
+  // Guardar en json-server.
+  // El servidor genera automáticamente el ID.
   const respuestaVenta = await fetch(API_VENTAS, {
     method: "POST",
     headers: {
@@ -154,7 +152,9 @@ export async function registrarVenta({
   });
 
   if (!respuestaVenta.ok) {
-    throw new Error("No se pudo registrar la compra. Intenta nuevamente.");
+    throw new Error(
+      "No se pudo registrar la compra. Intenta nuevamente."
+    );
   }
 
   return await respuestaVenta.json();

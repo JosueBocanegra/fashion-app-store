@@ -143,6 +143,34 @@
       "password": "123456",
       "fechaRegistro": "2026-11-13T21:26:05.915Z",
       "id": "LHooT5grmDE"
+    },
+    {
+      "nombre": "Benja",
+      "apellido": "Mija",
+      "email": "benja@gmail.com",
+      "telefono": "999123456",
+      "direccion": "Av. fantasma 123, chiclayo",
+      "fechaRegistro": "2026-11-17T23:36:22.361Z",
+      "esInvitado": true,
+      "id": "1rZw4UQocVI"
+    },
+    {
+      "nombre": "José",
+      "apellido": "Pérez",
+      "email": "jose@gmail.com",
+      "password": "123456",
+      "esInvitado": false,
+      "fechaRegistro": "2026-11-17T23:59:50.760Z",
+      "id": "t5R7gAtxdyg"
+    },
+    {
+      "nombre": "Prueba",
+      "apellido": "Mundo",
+      "email": "prueba@gmail.com",
+      "password": "123456",
+      "esInvitado": false,
+      "fechaRegistro": "2026-11-18T03:00:26.157Z",
+      "id": "SnQEbK0oZug"
     }
   ],
   "ventas": [
@@ -181,6 +209,54 @@
       ],
       "total": 100,
       "estado": "completado"
+    },
+    {
+      "fecha": "2026-11-17T23:36:22.380Z",
+      "clienteId": "1rZw4UQocVI",
+      "items": [
+        {
+          "productoId": "1",
+          "nombre": "Casaca de cuero",
+          "cantidad": 1,
+          "precioUnitario": 40,
+          "subtotal": 40
+        }
+      ],
+      "total": 40,
+      "estado": "Pendiente",
+      "id": "aVyy55oX9KA"
+    },
+    {
+      "fecha": "2026-11-18T00:02:06.232Z",
+      "clienteId": "t5R7gAtxdyg",
+      "items": [
+        {
+          "productoId": "6",
+          "nombre": "Camisa Perú",
+          "cantidad": 1,
+          "precioUnitario": 85,
+          "subtotal": 85
+        }
+      ],
+      "total": 85,
+      "estado": "Pendiente",
+      "id": "mvTaSHNHKQ8"
+    },
+    {
+      "fecha": "2026-11-18T03:01:17.905Z",
+      "clienteId": "SnQEbK0oZug",
+      "items": [
+        {
+          "productoId": "3",
+          "nombre": "Shorts casual",
+          "cantidad": 2,
+          "precioUnitario": 20,
+          "subtotal": 40
+        }
+      ],
+      "total": 40,
+      "estado": "Pendiente",
+      "id": "47HMOhI6r-Y"
     }
   ],
   "publicidad": [
