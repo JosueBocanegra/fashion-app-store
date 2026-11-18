@@ -1,10 +1,12 @@
+
 name: CI - Fashion Store
 
 on:
   push:
     branches:
       - main
-      - feat/registro-login-clientes
+      - 'feat/**'
+      - 'feature/**'
   pull_request:
     branches:
       - main

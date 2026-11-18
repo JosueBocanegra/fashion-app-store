@@ -7,6 +7,7 @@ import {
   iniciarSesionCliente,
   obtenerSesionCliente,
   cerrarSesionCliente,
+  actualizarDatosContactoCliente,
 } from "./authClienteService";
 
 const clientesIniciales = [
@@ -22,7 +23,6 @@ const clientesIniciales = [
 describe("Servicio de autenticación de clientes", () => {
   beforeEach(() => {
     localStorage.clear();
-
     globalThis.fetch = vi.fn();
   });
 
@@ -115,4 +115,79 @@ describe("Servicio de autenticación de clientes", () => {
 
     expect(obtenerSesionCliente()).toBeNull();
   });
+
+  it("debe permitir completar la cuenta de un cliente invitado", async () => {
+    fetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [
+          {
+            id: "cliente-invitado",
+            nombre: "Maria",
+            apellido: "Lopez",
+            email: "maria@example.com",
+            esInvitado: true,
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          id: "cliente-invitado",
+          nombre: "Maria",
+          apellido: "Lopez",
+          email: "maria@example.com",
+          password: "123456",
+          esInvitado: false,
+        }),
+      });
+
+    const resultado = await registrarCliente({
+      nombre: "Maria",
+      apellido: "Lopez",
+      email: "maria@example.com",
+      password: "123456",
+    });
+
+    expect(resultado.id).toBe("cliente-invitado");
+    expect(resultado.esInvitado).toBe(false);
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(fetch.mock.calls[1][1].method).toBe("PATCH");
+  });
+
+
+  it("debe actualizar el teléfono y dirección de un cliente", async () => {
+    fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        id: "1",
+        nombre: "Juan",
+        telefono: "987654321",
+        direccion: "Av. Principal 123, Chiclayo",
+      }),
+    });
+
+    const resultado = await actualizarDatosContactoCliente("1", {
+      telefono: "987654321",
+      direccion: "Av. Principal 123, Chiclayo",
+    });
+
+    expect(resultado.id).toBe("1");
+    expect(resultado.telefono).toBe("987654321");
+    expect(resultado.direccion).toBe("Av. Principal 123, Chiclayo");
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+
+    expect(fetch.mock.calls[0][1].method).toBe("PATCH");
+
+    const datosEnviados = JSON.parse(
+      fetch.mock.calls[0][1].body
+    );
+
+    expect(datosEnviados.telefono).toBe("987654321");
+    expect(datosEnviados.direccion).toBe("Av. Principal 123, Chiclayo");
+  });
+
 });
+
+
