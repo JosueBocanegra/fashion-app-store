@@ -1,30 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { ventasService } from "../services/ventasService";
 import { clientesService } from "../services/clientesService";
-
-// Normaliza los estados para evitar diferencias por mayúsculas
-// y mantener una presentación uniforme.
-const normalizarEstado = (estado) => {
-  const valor = String(estado || "")
-    .trim()
-    .replace(/\s+/g, " ")
-    .toLocaleLowerCase("es");
-
-  const equivalencias = {
-    pendiente: "Pendiente",
-    "en proceso": "En proceso",
-    procesando: "En proceso",
-    completado: "Completado",
-    completada: "Completado",
-    cancelado: "Cancelado",
-    cancelada: "Cancelado",
-    "sin estado": "Sin estado",
-  };
-
-  return equivalencias[valor] || (
-    valor ? valor.charAt(0).toUpperCase() + valor.slice(1) : "Sin estado"
-  );
-};
+import {
+  ESTADOS_PEDIDO,
+  normalizarEstadoPedido as normalizarEstado,
+} from "../../services/estadosPedido";
 
 // Obtiene la fecha en formato local YYYY-MM-DD.
 // Se utiliza para comparar correctamente los filtros de fecha.
@@ -122,20 +102,27 @@ const obtenerClaseEstado = (estado) => {
     return "bg-amber-50 text-amber-700 border-amber-200";
   }
 
-  if (valor === "en proceso") {
+  if (valor === "en preparación") {
     return "bg-blue-50 text-blue-700 border-blue-200";
   }
 
-  if (valor === "completado") {
-    return "bg-emerald-50 text-emerald-700 border-emerald-200";
+  if (valor === "enviado") {
+    return "bg-violet-50 text-violet-700 border-violet-200";
   }
 
-  if (valor === "cancelado") {
-    return "bg-rose-50 text-rose-700 border-rose-200";
+  if (valor === "entregado") {
+    return "bg-emerald-50 text-emerald-700 border-emerald-200";
   }
 
   return "bg-stone-100 text-neutral-600 border-stone-200";
 };
+
+// Opciones del selector: los 4 estados y, si la venta tiene
+// un estado antiguo distinto, también ese para no perderlo.
+const obtenerOpcionesEstado = (estadoActual) =>
+  ESTADOS_PEDIDO.includes(estadoActual)
+    ? ESTADOS_PEDIDO
+    : [...ESTADOS_PEDIDO, estadoActual];
 
 const Ventas = () => {
   const [ventas, setVentas] = useState([]);
@@ -150,6 +137,10 @@ const Ventas = () => {
   const [fechaDesde, setFechaDesde] = useState("");
   const [fechaHasta, setFechaHasta] = useState("");
   const [ventaSeleccionada, setVentaSeleccionada] = useState(null);
+
+  // Guardado del estado de un pedido
+  const [guardandoId, setGuardandoId] = useState(null);
+  const [aviso, setAviso] = useState("");
 
   // Carga ventas y clientes para relacionar cada operación
   // con su correspondiente registro de cliente.
@@ -180,6 +171,46 @@ const Ventas = () => {
     cargarVentas();
   }, []);
 
+  // Guarda el nuevo estado del pedido en db.json y actualiza la pantalla.
+  const cambiarEstado = async (venta, nuevoEstado) => {
+    if (nuevoEstado === normalizarEstado(venta.estado)) return;
+
+    setGuardandoId(venta.id);
+    setError("");
+    setAviso("");
+
+    try {
+      const ventaActualizada = await ventasService.actualizarEstado(
+        venta.id,
+        nuevoEstado
+      );
+
+      const estadoGuardado = ventaActualizada?.estado ?? nuevoEstado;
+
+      setVentas((lista) =>
+        lista.map((item) =>
+          item.id === venta.id ? { ...item, estado: estadoGuardado } : item
+        )
+      );
+
+      setVentaSeleccionada((actual) =>
+        actual && actual.id === venta.id
+          ? { ...actual, estado: estadoGuardado }
+          : actual
+      );
+
+      setAviso(`El pedido #${venta.id} ahora está "${nuevoEstado}".`);
+    } catch (err) {
+      console.error("Error actualizando el estado:", err);
+
+      setError(
+        "No se pudo actualizar el estado del pedido. Verifica que JSON Server esté ejecutándose."
+      );
+    } finally {
+      setGuardandoId(null);
+    }
+  };
+
   // Relaciona los clientes por su identificador.
   const clientesPorId = useMemo(() => {
     return new Map(
@@ -189,15 +220,14 @@ const Ventas = () => {
     );
   }, [clientes]);
 
-  // Obtiene los estados que existen realmente en los registros.
+  // Estados para el filtro: los 4 oficiales y cualquier otro
+  // estado antiguo que todavía exista en los registros.
   const estadosDisponibles = useMemo(() => {
-    const estados = ventas.map((venta) =>
-      normalizarEstado(venta.estado)
-    );
+    const otros = ventas
+      .map((venta) => normalizarEstado(venta.estado))
+      .filter((estado) => !ESTADOS_PEDIDO.includes(estado));
 
-    return [...new Set(estados)].sort((a, b) =>
-      a.localeCompare(b, "es")
-    );
+    return [...ESTADOS_PEDIDO, ...new Set(otros)];
   }, [ventas]);
 
   // Aplica búsqueda, filtros y ordenamiento.
@@ -287,11 +317,11 @@ const Ventas = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-light text-neutral-900 tracking-tight">
-            Gestión de ventas
+            Gestión de pedidos
           </h1>
 
           <p className="text-neutral-500 text-sm mt-1">
-            Consulta y revisa las compras realizadas en Fashion Store.
+            Consulta las compras de los clientes y actualiza el estado de cada pedido.
           </p>
         </div>
 
@@ -303,7 +333,7 @@ const Ventas = () => {
                      bg-[#8a5a63] hover:bg-[#754b53] transition-colors
                      disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          {loading ? "Actualizando..." : "↻ Actualizar ventas"}
+          {loading ? "Actualizando..." : "↻ Actualizar pedidos"}
         </button>
       </div>
 
@@ -312,14 +342,14 @@ const Ventas = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
           <div className="xl:col-span-2">
             <label className="block text-xs font-medium text-neutral-600 mb-1.5">
-              Buscar venta o cliente
+              Buscar pedido o cliente
             </label>
 
             <input
               type="text"
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Código de venta, nombre o correo..."
+              placeholder="Número de pedido, nombre o correo..."
               className="w-full px-4 py-2.5 bg-white border border-stone-200
                          rounded-xl text-sm text-neutral-800
                          placeholder-neutral-400 focus:outline-none
@@ -417,6 +447,17 @@ const Ventas = () => {
         </div>
       )}
 
+      {/* Aviso de estado actualizado */}
+      {aviso && (
+        <div
+          role="status"
+          className="mb-4 bg-emerald-50 border border-emerald-200
+                     text-emerald-800 text-sm rounded-xl p-3.5"
+        >
+          {aviso}
+        </div>
+      )}
+
       {/* Resumen del listado */}
       <div className="flex items-center justify-between gap-3 mb-3">
         <p className="text-xs text-neutral-500">
@@ -424,7 +465,7 @@ const Ventas = () => {
           <span className="font-semibold text-neutral-700">
             {ventasFiltradas.length}
           </span>{" "}
-          de {ventas.length} ventas
+          de {ventas.length} pedidos
         </p>
       </div>
 
@@ -438,8 +479,8 @@ const Ventas = () => {
           <div className="p-8 text-center">
             <p className="text-sm font-medium text-neutral-700">
               {ventas.length === 0
-                ? "Aún no hay ventas registradas."
-                : "No se encontraron ventas con los filtros aplicados."}
+                ? "Aún no hay pedidos registrados."
+                : "No se encontraron pedidos con los filtros aplicados."}
             </p>
 
             {ventas.length > 0 && (
@@ -454,7 +495,7 @@ const Ventas = () => {
               <thead>
                 <tr className="bg-stone-50 text-neutral-500 text-left
                                uppercase text-xs tracking-wider">
-                  <th className="px-5 py-3">Venta</th>
+                  <th className="px-5 py-3">Pedido</th>
                   <th className="px-5 py-3">Fecha</th>
                   <th className="px-5 py-3">Cliente</th>
                   <th className="px-5 py-3 text-center">Productos</th>
@@ -511,13 +552,25 @@ const Ventas = () => {
                       </td>
 
                       <td className="px-5 py-3.5 text-center">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-1
-                                      rounded-full border text-xs font-medium
+                        <select
+                          value={estado}
+                          disabled={guardandoId === venta.id}
+                          onChange={(e) =>
+                            cambiarEstado(venta, e.target.value)
+                          }
+                          aria-label={`Estado del pedido ${venta.id}`}
+                          className={`px-2.5 py-1 rounded-full border text-xs
+                                      font-medium focus:outline-none
+                                      focus:ring-4 focus:ring-[#8a5a63]/10
+                                      disabled:opacity-60
                                       ${obtenerClaseEstado(estado)}`}
                         >
-                          {estado}
-                        </span>
+                          {obtenerOpcionesEstado(estado).map((opcion) => (
+                            <option key={opcion} value={opcion}>
+                              {opcion}
+                            </option>
+                          ))}
+                        </select>
                       </td>
 
                       <td className="px-5 py-3.5 text-center">
@@ -563,7 +616,7 @@ const Ventas = () => {
                   id="detalle-venta-titulo"
                   className="text-xl font-semibold text-neutral-900"
                 >
-                  Detalle de venta
+                  Detalle del pedido
                 </h2>
 
                 <p className="text-sm text-neutral-500 mt-1">
@@ -592,7 +645,7 @@ const Ventas = () => {
                 >
                   <div>
                     <p className="text-xs text-neutral-500 mb-1">
-                      Código de venta
+                      Número de pedido
                     </p>
 
                     <p className="text-lg font-bold text-neutral-900">
@@ -600,16 +653,38 @@ const Ventas = () => {
                     </p>
                   </div>
 
-                  <span
-                    className={`inline-flex items-center px-3 py-1.5
-                                rounded-full border text-xs font-semibold
-                                w-fit
-                                ${obtenerClaseEstado(
-                                  normalizarEstado(ventaSeleccionada.estado)
-                                )}`}
-                  >
-                    {normalizarEstado(ventaSeleccionada.estado)}
-                  </span>
+                  <div className="flex flex-col gap-1">
+                    <label
+                      htmlFor="estado-pedido"
+                      className="text-xs text-neutral-500"
+                    >
+                      Estado del pedido
+                    </label>
+
+                    <select
+                      id="estado-pedido"
+                      value={normalizarEstado(ventaSeleccionada.estado)}
+                      disabled={guardandoId === ventaSeleccionada.id}
+                      onChange={(e) =>
+                        cambiarEstado(ventaSeleccionada, e.target.value)
+                      }
+                      className={`px-3 py-1.5 rounded-full border text-xs
+                                  font-semibold w-fit focus:outline-none
+                                  focus:ring-4 focus:ring-[#8a5a63]/10
+                                  disabled:opacity-60
+                                  ${obtenerClaseEstado(
+                                    normalizarEstado(ventaSeleccionada.estado)
+                                  )}`}
+                    >
+                      {obtenerOpcionesEstado(
+                        normalizarEstado(ventaSeleccionada.estado)
+                      ).map((opcion) => (
+                        <option key={opcion} value={opcion}>
+                          {opcion}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-5">
