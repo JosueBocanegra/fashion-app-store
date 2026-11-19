@@ -12,10 +12,15 @@ const normalizarEstado = (estado) => {
 
   const equivalencias = {
     pendiente: "Pendiente",
-    "en proceso": "En proceso",
-    procesando: "En proceso",
-    completado: "Completado",
-    completada: "Completado",
+    "en preparación": "En preparación",
+    "en preparacion": "En preparación",
+    preparacion: "En preparación",
+    "en proceso": "En preparación",
+    procesando: "En preparación",
+    enviado: "Enviado",
+    entregado: "Entregado",
+    completado: "Entregado",
+    completada: "Entregado",
     cancelado: "Cancelado",
     cancelada: "Cancelado",
     "sin estado": "Sin estado",
@@ -116,17 +121,25 @@ const obtenerNombreCliente = (venta, clientesPorId) => {
 };
 
 const obtenerClaseEstado = (estado) => {
-  const valor = estado.toLocaleLowerCase("es");
+  const valor = String(estado || "").toLocaleLowerCase("es");
 
   if (valor === "pendiente") {
     return "bg-amber-50 text-amber-700 border-amber-200";
   }
 
-  if (valor === "en proceso") {
+  if (
+    valor === "en preparación" ||
+    valor === "en preparacion" ||
+    valor === "en proceso"
+  ) {
     return "bg-blue-50 text-blue-700 border-blue-200";
   }
 
-  if (valor === "completado") {
+  if (valor === "enviado") {
+    return "bg-purple-50 text-purple-700 border-purple-200";
+  }
+
+  if (valor === "entregado" || valor === "completado") {
     return "bg-emerald-50 text-emerald-700 border-emerald-200";
   }
 
@@ -150,6 +163,37 @@ const Ventas = () => {
   const [fechaDesde, setFechaDesde] = useState("");
   const [fechaHasta, setFechaHasta] = useState("");
   const [ventaSeleccionada, setVentaSeleccionada] = useState(null);
+  const [actualizandoEstado, setActualizandoEstado] = useState(false);
+
+  const manejarCambioEstado = async (ventaId, nuevoEstado) => {
+    try {
+      setActualizandoEstado(true);
+      await ventasService.actualizarEstadoVenta(ventaId, nuevoEstado);
+
+      setVentas((prev) =>
+        prev.map((v) =>
+          String(v.id) === String(ventaId)
+            ? { ...v, estado: nuevoEstado }
+            : v
+        )
+      );
+
+      if (
+        ventaSeleccionada &&
+        String(ventaSeleccionada.id) === String(ventaId)
+      ) {
+        setVentaSeleccionada((prev) => ({
+          ...prev,
+          estado: nuevoEstado,
+        }));
+      }
+    } catch (err) {
+      console.error("Error al actualizar estado de la venta:", err);
+      alert("No se pudo actualizar el estado de la venta.");
+    } finally {
+      setActualizandoEstado(false);
+    }
+  };
 
   // Carga ventas y clientes para relacionar cada operación
   // con su correspondiente registro de cliente.
@@ -600,16 +644,30 @@ const Ventas = () => {
                     </p>
                   </div>
 
-                  <span
-                    className={`inline-flex items-center px-3 py-1.5
-                                rounded-full border text-xs font-semibold
-                                w-fit
-                                ${obtenerClaseEstado(
-                                  normalizarEstado(ventaSeleccionada.estado)
-                                )}`}
-                  >
-                    {normalizarEstado(ventaSeleccionada.estado)}
-                  </span>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <span className="text-xs text-neutral-500 font-medium">
+                      Cambiar estado:
+                    </span>
+                    <select
+                      value={normalizarEstado(ventaSeleccionada.estado)}
+                      onChange={(e) =>
+                        manejarCambioEstado(
+                          ventaSeleccionada.id,
+                          e.target.value
+                        )
+                      }
+                      disabled={actualizandoEstado}
+                      className={`text-xs font-semibold px-3 py-1.5 rounded-full border cursor-pointer transition focus:outline-none focus:ring-2 focus:ring-[#8a5a63] disabled:opacity-50 ${obtenerClaseEstado(
+                        normalizarEstado(ventaSeleccionada.estado)
+                      )}`}
+                    >
+                      <option value="Pendiente">Pendiente</option>
+                      <option value="En preparación">En preparación</option>
+                      <option value="Enviado">Enviado</option>
+                      <option value="Entregado">Entregado</option>
+                      <option value="Cancelado">Cancelado</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-5">
