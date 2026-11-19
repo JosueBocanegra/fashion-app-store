@@ -7,6 +7,11 @@ const ProductCard = ({ producto }) => {
   const [modalAbierto, setModalAbierto] = useState(false);
   const { agregarAlCarrito } = useCarrito();
 
+  // Verificar las existencias del producto.
+  const stockDisponible = Number(producto.stock ?? 0);
+  const sinStock = !Number.isFinite(stockDisponible) || stockDisponible <= 0;
+  const stockBajo = !sinStock && stockDisponible <= 5;
+
   const calcularPrecioConDescuento = () => {
     if (producto.oferta && producto.descuento) {
       return producto.precio - (producto.precio * producto.descuento / 100);
@@ -59,51 +64,66 @@ const ProductCard = ({ producto }) => {
           )}
         </div>
       
-      <div className="p-5 flex flex-col flex-grow">
-        <h3 className="text-lg font-semibold text-slate-800 mb-2 line-clamp-1">
-          {producto.nombre}
-        </h3>
-        
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <span className="text-slate-500 text-sm">{producto.categoria}</span>
+        <div className="p-5 flex flex-col flex-grow">
+          <h3 className="text-lg font-semibold text-slate-800 mb-2 line-clamp-1">
+            {producto.nombre}
+          </h3>
+          
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <span className="text-slate-500 text-sm">{producto.categoria}</span>
+            </div>
+
+            {/* Mensajes de disponibilidad del inventario */}
+            <span className={`text-sm font-semibold ${
+              sinStock
+                ? "text-red-600"
+                : stockBajo
+                  ? "text-amber-600"
+                  : "text-slate-400"
+            }`}>
+              {sinStock
+                ? "Sin existencias"
+                : stockBajo
+                  ? `¡Pocas unidades! (${stockDisponible})`
+                  : `Stock: ${stockDisponible}`}
+            </span>
           </div>
-          <span className="text-sm text-slate-400">Stock: {producto.stock}</span>
-        </div>
-        
-        <div className="flex items-center justify-between mt-auto">
-          <div>
-            {producto.oferta ? (
-              <div>
-                <span className="text-slate-400 line-through text-sm">
+          
+          <div className="flex items-center justify-between mt-auto">
+            <div>
+              {producto.oferta ? (
+                <div>
+                  <span className="text-slate-400 line-through text-sm">
+                    S/{producto.precio}
+                  </span>
+                  <span className="text-purple-600 font-bold text-xl ml-2">
+                    S/{calcularPrecioConDescuento().toFixed(2)}
+                  </span>
+                  {producto.descuento && (
+                    <span className="block text-xs text-green-600 font-semibold">
+                      -{producto.descuento}%
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <span className="text-slate-800 font-bold text-xl">
                   S/{producto.precio}
                 </span>
-                <span className="text-purple-600 font-bold text-xl ml-2">
-                  S/{calcularPrecioConDescuento().toFixed(2)}
-                </span>
-                {producto.descuento && (
-                  <span className="block text-xs text-green-600 font-semibold">
-                    -{producto.descuento}%
-                  </span>
-                )}
-              </div>
-            ) : (
-              <span className="text-slate-800 font-bold text-xl">
-                S/{producto.precio}
-              </span>
-            )}
+              )}
+            </div>
+
+            <button 
+              onClick={() => agregarAlCarrito(producto)}
+              disabled={sinStock}
+              className="inline-flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-xl hover:bg-purple-700 transition-all duration-300 hover:scale-105 text-sm font-medium cursor-pointer disabled:bg-gray-400 disabled:cursor-not-allowed disabled:hover:scale-100"
+            >
+              <ShoppingCart className="w-4 h-4" />
+              {sinStock ? "Sin stock" : "Agregar"}
+            </button>
           </div>
-          <button 
-            onClick={() => agregarAlCarrito(producto)}
-            disabled={Number(producto.stock) <= 0}
-            className="inline-flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-xl hover:bg-purple-700 transition-all duration-300 hover:scale-105 text-sm font-medium cursor-pointer disabled:bg-gray-400 disabled:cursor-not-allowed disabled:hover:scale-100"
-          >
-            <ShoppingCart className="w-4 h-4" />
-            {Number(producto.stock) <= 0 ? "Sin stock" : "Agregar"}
-          </button>
         </div>
       </div>
-    </div>
 
       {/* Modal para visualizar la imagen en pantalla completa */}
       <ImageModal
@@ -121,5 +141,3 @@ const ProductCard = ({ producto }) => {
 };
 
 export default ProductCard;
-
-

@@ -123,6 +123,13 @@
       "password": "123456",
       "rol": "admin",
       "id": "IHf8rYHzz1w"
+    },
+    {
+      "nombre": "Anyelo Linares",
+      "email": "anyelo.linares.pe@gmail.com",
+      "password": "123456",
+      "rol": "admin",
+      "id": "usr-anyelo"
     }
   ],
   "clientes": [
@@ -222,6 +229,28 @@
       "fechaRegistro": "2026-11-19T17:30:19.144Z",
       "esInvitado": true,
       "id": "Dg1IJXm6cz0"
+    },
+    {
+      "nombre": "Anyelo",
+      "apellido": "Linares",
+      "email": "anyelo.linares.pe@gmail.com",
+      "password": "123456",
+      "telefono": "987654321",
+      "direccion": "Av. Principal 123",
+      "fechaRegistro": "2026-11-19T07:45:00.000Z",
+      "esInvitado": false,
+      "id": "cli-anyelo"
+    },
+    {
+      "nombre": "anyelo",
+      "apellido": "Linares Carmen",
+      "email": "gianbranco2017@gmail.com",
+      "password": "123456",
+      "telefono": "920228501",
+      "direccion": "",
+      "esInvitado": false,
+      "fechaRegistro": "2026-11-19T13:06:50.851Z",
+      "id": "RgZbS2rnfGc"
     }
   ],
   "ventas": [
@@ -365,9 +394,32 @@
       "id": "TojcqnEesvA"
     },
     {
-      "fecha": "2026-11-19T17:22:25.919Z",
-      "clienteId": "chw3C6F5ZZA",
+      "fecha": "2026-11-18T05:20:00.000Z",
+      "clienteId": "t5R7gAtxdyg",
       "items": [
+        {
+          "productoId": "1",
+          "nombre": "Casaca de cuero",
+          "cantidad": 1,
+          "precioUnitario": 50,
+          "subtotal": 50
+        }
+      ],
+      "total": 50,
+      "estado": "En preparación",
+      "id": "PED-PREP-01"
+    },
+    {
+      "fecha": "2026-11-17T18:40:00.000Z",
+      "clienteId": "t5R7gAtxdyg",
+      "items": [
+        {
+          "productoId": "3",
+          "nombre": "Shorts casual",
+          "cantidad": 2,
+          "precioUnitario": 20,
+          "subtotal": 40
+        },
         {
           "productoId": "2",
           "nombre": "Casaca impermeable",
@@ -381,9 +433,96 @@
       "id": "Pry4h9LFysk"
     },
     {
-      "fecha": "2026-11-19T17:30:19.164Z",
-      "clienteId": "Dg1IJXm6cz0",
+      "fecha": "2026-11-15T14:10:00.000Z",
+      "clienteId": "t5R7gAtxdyg",
       "items": [
+        {
+          "productoId": "4",
+          "nombre": "Camisa formal",
+          "cantidad": 2,
+          "precioUnitario": 30,
+          "subtotal": 60
+        }
+      ],
+      "total": 60,
+      "estado": "Entregado",
+      "id": "PED-ENT-03"
+    },
+    {
+      "fecha": "2026-11-19T06:30:00.000Z",
+      "clienteId": "cli-anyelo",
+      "items": [
+        {
+          "productoId": "1",
+          "nombre": "Casaca de cuero",
+          "cantidad": 1,
+          "precioUnitario": 50,
+          "subtotal": 50
+        }
+      ],
+      "total": 50,
+      "estado": "Pendiente",
+      "id": "PED-ANY-01"
+    },
+    {
+      "fecha": "2026-11-18T16:00:00.000Z",
+      "clienteId": "cli-anyelo",
+      "items": [
+        {
+          "productoId": "6",
+          "nombre": "Camisa Perú",
+          "cantidad": 1,
+          "precioUnitario": 85,
+          "subtotal": 85
+        }
+      ],
+      "total": 85,
+      "estado": "En preparación",
+      "id": "PED-ANY-02"
+    },
+    {
+      "fecha": "2026-11-17T12:00:00.000Z",
+      "clienteId": "cli-anyelo",
+      "items": [
+        {
+          "productoId": "3",
+          "nombre": "Shorts casual",
+          "cantidad": 2,
+          "precioUnitario": 20,
+          "subtotal": 40
+        }
+      ],
+      "total": 40,
+      "estado": "Enviado",
+      "id": "PED-ANY-03"
+    },
+    {
+      "fecha": "2026-11-14T09:00:00.000Z",
+      "clienteId": "cli-anyelo",
+      "items": [
+        {
+          "productoId": "4",
+          "nombre": "Camisa formal",
+          "cantidad": 1,
+          "precioUnitario": 30,
+          "subtotal": 30
+        }
+      ],
+      "total": 30,
+      "estado": "Entregado",
+      "id": "PED-ANY-04"
+    },
+    {
+      "fecha": "2026-11-19T13:07:17.631Z",
+      "clienteId": "RgZbS2rnfGc",
+      "items": [
+        {
+          "productoId": "3",
+          "nombre": "Shorts casual",
+          "cantidad": 1,
+          "precioUnitario": 20,
+          "subtotal": 20
+        },
         {
           "productoId": "4",
           "nombre": "Camisa formal",
@@ -395,6 +534,9 @@
       "total": 27,
       "estado": "Pendiente",
       "id": "8LRjEpUWSk8"
+      "total": 47,
+      "estado": "Pendiente",
+      "id": "a-jpJf3mdN0"
     }
   ],
   "publicidad": [

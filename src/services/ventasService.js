@@ -1,6 +1,7 @@
 const API_URL = "http://localhost:3001";
 const API_VENTAS = `${API_URL}/ventas`;
 const API_CLIENTES = `${API_URL}/clientes`;
+const API_PRODUCTOS = `${API_URL}/productos`;
 
 const redondearMonto = (monto) =>
   Math.round((monto + Number.EPSILON) * 100) / 100;
@@ -107,7 +108,109 @@ async function resolverClienteVenta(cliente, datosCliente) {
 }
 
 /**
- * Registra una compra en db.json.
+ * Verifica que exista stock suficiente para todos los productos.
+ */
+async function verificarStockDisponible(items) {
+  const respuesta = await fetch(API_PRODUCTOS);
+
+  if (!respuesta.ok) {
+    throw new Error("No se pudo consultar el inventario.");
+  }
+
+  const productos = await respuesta.json();
+
+  // Agrupar las cantidades por producto para evitar
+  // descontar incorrectamente si un producto aparece varias veces.
+  const cantidadesSolicitadas = new Map();
+
+  items.forEach((item) => {
+    const cantidadActual =
+      cantidadesSolicitadas.get(item.productoId) || 0;
+
+    cantidadesSolicitadas.set(
+      item.productoId,
+      cantidadActual + item.cantidad
+    );
+  });
+
+  const inventario = [];
+
+  for (const [productoId, cantidad] of cantidadesSolicitadas) {
+    const producto = productos.find(
+      (p) => String(p.id) === productoId
+    );
+
+    if (!producto) {
+      throw new Error(
+        "Uno de los productos ya no está disponible."
+      );
+    }
+
+    const stockActual = Number(producto.stock);
+
+    if (!Number.isInteger(stockActual) || stockActual < 0) {
+      throw new Error(
+        `El stock de ${producto.nombre} no es válido.`
+      );
+    }
+
+    if (stockActual < cantidad) {
+      throw new Error(
+        `Stock insuficiente para ${producto.nombre}. Solo quedan ${stockActual} unidades disponibles.`
+      );
+    }
+
+    inventario.push({
+      id: String(producto.id),
+      nombre: producto.nombre,
+      stockAnterior: stockActual,
+      stockNuevo: stockActual - cantidad,
+    });
+  }
+
+  return inventario;
+}
+
+/**
+ * Restaura el inventario si la compra no se completa.
+ */
+async function restaurarStock(productosActualizados) {
+  let restauracionCompleta = true;
+
+  // Restaurar en orden inverso al de actualización.
+  for (const producto of [...productosActualizados].reverse()) {
+    try {
+      const respuesta = await fetch(
+        `${API_PRODUCTOS}/${producto.id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            stock: producto.stockAnterior,
+          }),
+        }
+      );
+
+      if (!respuesta.ok) {
+        throw new Error("No se pudo restaurar el stock.");
+      }
+    } catch (error) {
+      console.error(
+        `Error al restaurar el stock de ${producto.nombre}:`,
+        error
+      );
+
+      restauracionCompleta = false;
+    }
+  }
+
+  return restauracionCompleta;
+}
+
+/**
+ * Registra una compra y actualiza automáticamente el inventario.
  */
 export async function registrarVenta({
   cliente = null,
@@ -151,6 +254,9 @@ export async function registrarVenta({
     };
   });
 
+  // Verificar que exista stock suficiente antes de continuar.
+  const inventario = await verificarStockDisponible(items);
+
   // Calcular el total a partir de los productos preparados.
   const total = redondearMonto(
     items.reduce((acumulado, item) => acumulado + item.subtotal, 0)
@@ -177,23 +283,72 @@ export async function registrarVenta({
     estado: "Pendiente",
   };
 
-  // Guardar en json-server.
-  // El servidor genera automáticamente el ID.
-  const respuestaVenta = await fetch(API_VENTAS, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(nuevaVenta),
-  });
+  // Guardar los productos cuyo stock se actualizó correctamente.
+  const productosActualizados = [];
 
-  if (!respuestaVenta.ok) {
-    throw new Error(
-      "No se pudo registrar la compra. Intenta nuevamente."
-    );
+  try {
+    // Descontar las unidades compradas del inventario.
+    for (const producto of inventario) {
+      const respuestaStock = await fetch(
+        `${API_PRODUCTOS}/${producto.id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            stock: producto.stockNuevo,
+          }),
+        }
+      );
+
+      if (!respuestaStock.ok) {
+        throw new Error(
+          `No se pudo actualizar el stock de ${producto.nombre}.`
+        );
+      }
+
+      productosActualizados.push(producto);
+    }
+
+    // Registrar la venta después de actualizar el inventario.
+    const respuestaVenta = await fetch(API_VENTAS, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(nuevaVenta),
+    });
+
+    if (!respuestaVenta.ok) {
+      throw new Error(
+        "No se pudo registrar la compra. Intenta nuevamente."
+      );
+    }
+
+    const ventaRegistrada = await respuestaVenta.json();
+
+    if (!ventaRegistrada?.id) {
+      throw new Error(
+        "No se pudo confirmar el registro de la compra."
+      );
+    }
+
+    // Devolver la venta registrada.
+    return ventaRegistrada;
+
+  } catch (error) {
+    // Si ocurre un error, intentar restaurar el stock anterior.
+    const restaurado = await restaurarStock(productosActualizados);
+
+    if (!restaurado) {
+      throw new Error(
+        `${error.message} Además, no se pudo restaurar todo el inventario. Es necesario revisar db.json.`
+      );
+    }
+
+    throw error;
   }
-
-  return await respuestaVenta.json();
 }
 
 /**
@@ -215,5 +370,3 @@ export const ventasService = {
 };
 
 export default ventasService;
-
-

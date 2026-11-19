@@ -10,7 +10,8 @@ import {
   ShoppingCart,
   LogIn,
   UserPlus,
-  LogOut
+  LogOut,
+  PackageCheck
 } from 'lucide-react';
 
 import { Link, useNavigate } from 'react-router-dom';
@@ -157,14 +158,23 @@ const Navbar = () => {
 
             {/* Autenticación de clientes */}
             {autenticado ? (
-              <div className="flex items-center gap-3 px-3">
-                <span className="text-white text-sm">
+              <div className="flex items-center gap-2 px-3">
+                <Link
+                  to="/mis-pedidos"
+                  className="flex items-center gap-1.5 px-3 py-2 text-purple-200 hover:text-white hover:bg-white/10 rounded-xl transition-all font-medium text-sm"
+                  title="Consultar mis compras"
+                >
+                  <PackageCheck className="w-4 h-4 text-purple-400" />
+                  <span>Mis pedidos</span>
+                </Link>
+
+                <span className="text-white text-sm pl-2 border-l border-white/20">
                   Hola, {cliente.nombre}
                 </span>
 
                 <button
                   onClick={manejarCerrarSesion}
-                  className="flex items-center gap-2 px-3 py-2 text-white/70 hover:text-white hover:bg-white/10 rounded-xl transition-all"
+                  className="flex items-center gap-2 px-3 py-2 text-white/70 hover:text-white hover:bg-white/10 rounded-xl transition-all text-sm"
                 >
                   <LogOut className="w-4 h-4" />
                   Cerrar sesión
@@ -242,9 +252,18 @@ const Navbar = () => {
             {/* Autenticación de clientes en móvil */}
             {autenticado ? (
               <>
-                <div className="px-4 py-3 text-white font-medium">
+                <div className="px-4 py-2 text-white font-medium">
                   Hola, {cliente.nombre}
                 </div>
+
+                <Link
+                  to="/mis-pedidos"
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center gap-3 px-4 py-3 text-purple-200 hover:text-white hover:bg-white/10 rounded-xl transition-all duration-300 font-medium"
+                >
+                  <PackageCheck className="w-5 h-5 text-purple-400" />
+                  Mis pedidos
+                </Link>
 
                 <button
                   onClick={manejarCerrarSesion}
