@@ -310,6 +310,61 @@
       "total": 35,
       "estado": "Pendiente",
       "id": "e9Nq1KBL72E"
+    },
+    {
+      "fecha": "2026-11-18T05:20:00.000Z",
+      "clienteId": "t5R7gAtxdyg",
+      "items": [
+        {
+          "productoId": "1",
+          "nombre": "Casaca de cuero",
+          "cantidad": 1,
+          "precioUnitario": 50,
+          "subtotal": 50
+        }
+      ],
+      "total": 50,
+      "estado": "En preparación",
+      "id": "PED-PREP-01"
+    },
+    {
+      "fecha": "2026-11-17T18:40:00.000Z",
+      "clienteId": "t5R7gAtxdyg",
+      "items": [
+        {
+          "productoId": "3",
+          "nombre": "Shorts casual",
+          "cantidad": 2,
+          "precioUnitario": 20,
+          "subtotal": 40
+        },
+        {
+          "productoId": "2",
+          "nombre": "Casaca impermeable",
+          "cantidad": 1,
+          "precioUnitario": 35,
+          "subtotal": 35
+        }
+      ],
+      "total": 75,
+      "estado": "Enviado",
+      "id": "PED-ENV-02"
+    },
+    {
+      "fecha": "2026-11-15T14:10:00.000Z",
+      "clienteId": "t5R7gAtxdyg",
+      "items": [
+        {
+          "productoId": "4",
+          "nombre": "Camisa formal",
+          "cantidad": 2,
+          "precioUnitario": 30,
+          "subtotal": 60
+        }
+      ],
+      "total": 60,
+      "estado": "Entregado",
+      "id": "PED-ENT-03"
     }
   ],
   "publicidad": [
