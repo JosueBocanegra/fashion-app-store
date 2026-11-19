@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useAuthCliente } from "../context/AuthClienteContext";
 import { obtenerPedidosCliente, ESTADOS_PEDIDO } from "../services/pedidosService";
+import DetallePedidoModal from "../components/DetallePedidoModal";
 
 // Configuración de estilo y badges según el estado del pedido
 export const ESTADO_CONFIG = {
@@ -43,6 +44,7 @@ const MisPedidos = () => {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
   const [filtroEstado, setFiltroEstado] = useState("TODOS");
+  const [pedidoSeleccionado, setPedidoSeleccionado] = useState(null);
 
   const cargarPedidos = async () => {
     if (!cliente?.id) {
@@ -257,7 +259,7 @@ const MisPedidos = () => {
                     </div>
 
                     <button
-                      onClick={() => alert(`Detalle del pedido #${pedido.id}\nTotal: S/ ${pedido.total}`)}
+                      onClick={() => setPedidoSeleccionado(pedido)}
                       className="inline-flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded-xl font-medium text-sm transition cursor-pointer"
                     >
                       <Eye className="w-4 h-4" />
@@ -270,6 +272,14 @@ const MisPedidos = () => {
           </div>
         )}
       </div>
+
+      {/* Modal de Detalle Completo de la Compra */}
+      {pedidoSeleccionado && (
+        <DetallePedidoModal
+          pedido={pedidoSeleccionado}
+          onClose={() => setPedidoSeleccionado(null)}
+        />
+      )}
     </div>
   );
 };

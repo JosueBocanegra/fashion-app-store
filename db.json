@@ -210,6 +210,17 @@
       "fechaRegistro": "2026-11-19T07:45:00.000Z",
       "esInvitado": false,
       "id": "cli-anyelo"
+    },
+    {
+      "nombre": "anyelo",
+      "apellido": "Linares Carmen",
+      "email": "gianbranco2017@gmail.com",
+      "password": "123456",
+      "telefono": "920228501",
+      "direccion": "",
+      "esInvitado": false,
+      "fechaRegistro": "2026-11-19T13:06:50.851Z",
+      "id": "RgZbS2rnfGc"
     }
   ],
   "ventas": [
@@ -447,6 +458,29 @@
       "total": 30,
       "estado": "Entregado",
       "id": "PED-ANY-04"
+    },
+    {
+      "fecha": "2026-11-19T13:07:17.631Z",
+      "clienteId": "RgZbS2rnfGc",
+      "items": [
+        {
+          "productoId": "3",
+          "nombre": "Shorts casual",
+          "cantidad": 1,
+          "precioUnitario": 20,
+          "subtotal": 20
+        },
+        {
+          "productoId": "4",
+          "nombre": "Camisa formal",
+          "cantidad": 1,
+          "precioUnitario": 27,
+          "subtotal": 27
+        }
+      ],
+      "total": 47,
+      "estado": "Pendiente",
+      "id": "a-jpJf3mdN0"
     }
   ],
   "publicidad": [
