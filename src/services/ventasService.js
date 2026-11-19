@@ -209,9 +209,34 @@ export async function obtenerVentas() {
   return await respuesta.json();
 }
 
+/**
+ * Consultar las compras de un cliente.
+ */
+export async function obtenerVentasCliente(clienteId) {
+  if (!clienteId) {
+    throw new Error("No se encontró el identificador del cliente.");
+  }
+
+  const respuesta = await fetch(
+    `${API_VENTAS}?clienteId=${encodeURIComponent(clienteId)}`
+  );
+
+  if (!respuesta.ok) {
+    throw new Error("No se pudieron obtener los pedidos del cliente.");
+  }
+
+  const ventas = await respuesta.json();
+
+  // Se vuelve a filtrar por seguridad, comparando como texto.
+  return ventas.filter(
+    (venta) => String(venta.clienteId) === String(clienteId)
+  );
+}
+
 export const ventasService = {
   registrarVenta,
   obtenerVentas,
+  obtenerVentasCliente,
 };
 
 export default ventasService;
