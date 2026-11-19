@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ShoppingBag,
   Home,
@@ -16,9 +16,35 @@ import {
 import { Link, useNavigate } from 'react-router-dom';
 import { useCarrito } from '../context/CarritoContext';
 import { useAuthCliente } from '../context/AuthClienteContext';
+import { publicidadService } from '../services/publicidadService';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
+
+  const [logoTienda, setLogoTienda] = useState("");
+  useEffect(() => {
+    let componenteActivo = true;
+
+    const cargarLogo = async () => {
+      try {
+        const configuracion =
+          await publicidadService.obtenerConfiguracionTienda();
+
+        if (componenteActivo) {
+          setLogoTienda(configuracion?.logo || "");
+        }
+      } catch (error) {
+        console.error("No se pudo cargar el logo de la tienda:", error);
+      }
+    };
+
+    cargarLogo();
+
+    return () => {
+      componenteActivo = false;
+    };
+  }, []);
+
   const { cantidadProductos } = useCarrito();
   const { cliente, autenticado, logout } = useAuthCliente();
   const navigate = useNavigate();
@@ -33,11 +59,29 @@ const Navbar = () => {
     <nav className="bg-gradient-to-r from-slate-900 via-purple-900 to-indigo-900 sticky top-0 z-50 shadow-2xl border-b border-white/10">
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center h-16">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 text-2xl font-bold">
-            <ShoppingBag className="w-7 h-7 text-purple-400" />
-            <span className="text-white">Fashion</span>
-            <span className="text-purple-400">Store</span>
+
+          {/* Logo dinámico de la tienda */}
+          <Link
+            to="/"
+            aria-label="Fashion Store - Inicio"
+            className="flex items-center gap-2 text-2xl font-bold cursor-pointer"
+          >
+            {logoTienda ? (
+              <img
+                src={logoTienda}
+                alt="Fashion Store"
+                className="h-10 max-w-[180px] object-contain"
+                onError={() => setLogoTienda("")}
+              />
+            ) : (
+              <>
+                <ShoppingBag className="w-7 h-7 text-purple-400" />
+
+                <span className="text-white">Fashion</span>
+
+                <span className="text-purple-400">Store</span>
+              </>
+            )}
           </Link>
 
           {/* Desktop Menu */}
