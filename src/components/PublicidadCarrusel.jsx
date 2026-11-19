@@ -2,16 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { publicidadService } from "../services/publicidadService";
 
-const obtenerFechaActual = () => {
-  const fecha = new Date();
-
-  const año = fecha.getFullYear();
-  const mes = String(fecha.getMonth() + 1).padStart(2, "0");
-  const dia = String(fecha.getDate()).padStart(2, "0");
-
-  return `${año}-${mes}-${dia}`;
-};
-
 const resolverRutaImagen = (imagen) => {
   if (!imagen) return "";
 
@@ -20,24 +10,6 @@ const resolverRutaImagen = (imagen) => {
   }
 
   return `/${imagen.replace(/^\/+/, "")}`;
-};
-
-// Verifica que la publicidad esté activa y dentro de su vigencia.
-const publicidadVigente = (publicidad, fechaActual) => {
-  if (!publicidad.estado || !publicidad.imagen) {
-    return false;
-  }
-
-  const fechaInicio = publicidad.fechaInicio || "";
-  const fechaFin = publicidad.fechaFin || "";
-
-  const dentroDelInicio =
-    !fechaInicio || fechaActual >= fechaInicio;
-
-  const dentroDelFin =
-    !fechaFin || fechaActual <= fechaFin;
-
-  return dentroDelInicio && dentroDelFin;
 };
 
 const PublicidadCarrusel = () => {
@@ -76,10 +48,10 @@ const PublicidadCarrusel = () => {
   }, []);
 
   const publicidadesVisibles = useMemo(() => {
-    const fechaActual = obtenerFechaActual();
-
-    return publicidades.filter((publicidad) =>
-      publicidadVigente(publicidad, fechaActual)
+    return publicidades.filter(
+      (publicidad) =>
+        Boolean(publicidad.estado) &&
+        Boolean(publicidad.imagen)
     );
   }, [publicidades]);
 

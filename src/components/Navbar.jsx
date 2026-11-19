@@ -16,7 +16,11 @@ import {
 import { Link, useNavigate } from 'react-router-dom';
 import { useCarrito } from '../context/CarritoContext';
 import { useAuthCliente } from '../context/AuthClienteContext';
-import { publicidadService } from '../services/publicidadService';
+
+import {
+  publicidadService,
+  obtenerImagenLogoActivo,
+} from '../services/publicidadService';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -31,17 +35,36 @@ const Navbar = () => {
           await publicidadService.obtenerConfiguracionTienda();
 
         if (componenteActivo) {
-          setLogoTienda(configuracion?.logo || "");
+          setLogoTienda(
+            obtenerImagenLogoActivo(configuracion)
+          );
         }
       } catch (error) {
-        console.error("No se pudo cargar el logo de la tienda:", error);
+        console.error(
+          "No se pudo cargar el logo de la tienda:",
+          error
+        );
       }
+    };
+
+    const actualizarLogo = (event) => {
+      setLogoTienda(event.detail?.logo || "");
     };
 
     cargarLogo();
 
+    window.addEventListener(
+      "logo-tienda-actualizado",
+      actualizarLogo
+    );
+
     return () => {
       componenteActivo = false;
+
+      window.removeEventListener(
+        "logo-tienda-actualizado",
+        actualizarLogo
+      );
     };
   }, []);
 

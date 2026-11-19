@@ -1,6 +1,21 @@
 const API_PUBLICIDAD = "http://localhost:3001/publicidad";
 const API_CONFIGURACION = "http://localhost:3001/configuracion/tienda";
 
+export const obtenerImagenLogoActivo = (configuracion) => {
+  if (!configuracion) return "";
+
+  const logos = Array.isArray(configuracion.logos)
+    ? configuracion.logos
+    : [];
+
+  const logoActivo = logos.find(
+    (logo) =>
+      String(logo.id) === String(configuracion.logoActivoId)
+  );
+
+  return logoActivo?.imagen || configuracion.logo || "";
+};
+
 export const publicidadService = {
   async obtenerPublicidad() {
     const response = await fetch(API_PUBLICIDAD);
@@ -91,17 +106,21 @@ export const publicidadService = {
     return await response.json();
   },
 
-  async actualizarLogo(logo) {
+  async actualizarLogos(logos, logoActivoId) {
     const response = await fetch(API_CONFIGURACION, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ logo }),
+      body: JSON.stringify({
+        logos,
+        logoActivoId,
+        logo: "",
+      }),
     });
 
     if (!response.ok) {
-      throw new Error("No se pudo actualizar el logo.");
+      throw new Error("No se pudo actualizar la colección de logotipos.");
     }
 
     return await response.json();

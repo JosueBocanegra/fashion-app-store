@@ -8,7 +8,10 @@ import {
   vi,
 } from "vitest";
 
-import { publicidadService } from "./publicidadService";
+import {
+  publicidadService,
+  obtenerImagenLogoActivo,
+} from "./publicidadService";
 
 const respuesta = (data, ok = true) => ({
   ok,
@@ -46,11 +49,11 @@ describe("Servicio de publicidad", () => {
 
   it("crea una nueva publicidad", async () => {
     const nuevaPublicidad = {
-      titulo: "Oferta de temporada",
-      descripcion: "Promoción especial",
+      titulo: "Nueva colección",
+      descripcion: "Colección de temporada",
       imagen: "data:image/webp;base64,imagen",
-      descuento: 20,
       estado: false,
+      fechaCreacion: "2026-11-19T10:00:00.000Z",
     };
 
     fetch.mockResolvedValueOnce(
@@ -150,19 +153,35 @@ describe("Servicio de publicidad", () => {
     );
   });
 
-  it("actualiza el logo de la tienda sin crear otro registro", async () => {
-    const logo = "data:image/webp;base64,nuevologo";
+  it("actualiza la colección de logos y el identificador del logo activo", async () => {
+    const logos = [
+      {
+        id: "logo-1",
+        nombre: "Logo principal",
+        imagen: "data:image/webp;base64,logo1",
+      },
+      {
+        id: "logo-2",
+        nombre: "Logo alternativo",
+        imagen: "data:image/webp;base64,logo2",
+      },
+    ];
 
-    fetch.mockResolvedValueOnce(
-      respuesta({
-        id: "tienda",
-        logo,
-      })
+    const configuracion = {
+      id: "tienda",
+      logos,
+      logoActivoId: "logo-2",
+      logo: "",
+    };
+
+    fetch.mockResolvedValueOnce(respuesta(configuracion));
+
+    const resultado = await publicidadService.actualizarLogos(
+      logos,
+      "logo-2"
     );
 
-    const resultado = await publicidadService.actualizarLogo(logo);
-
-    expect(resultado.logo).toBe(logo);
+    expect(resultado).toEqual(configuracion);
     expect(fetch.mock.calls[0][1].method).toBe("PATCH");
 
     expect(fetch.mock.calls[0][0]).toBe(
@@ -171,7 +190,53 @@ describe("Servicio de publicidad", () => {
 
     expect(
       JSON.parse(fetch.mock.calls[0][1].body)
-    ).toEqual({ logo });
+    ).toEqual({
+      logos,
+      logoActivoId: "logo-2",
+      logo: "",
+    });
+  });
+
+  it("obtiene la imagen del único logotipo activo", () => {
+    const configuracion = {
+      id: "tienda",
+      logos: [
+        {
+          id: "logo-1",
+          nombre: "Logo principal",
+          imagen: "data:image/webp;base64,logo1",
+        },
+        {
+          id: "logo-2",
+          nombre: "Logo alternativo",
+          imagen: "data:image/webp;base64,logo2",
+        },
+      ],
+      logoActivoId: "logo-2",
+    };
+
+    expect(
+      obtenerImagenLogoActivo(configuracion)
+    ).toBe("data:image/webp;base64,logo2");
+  });
+
+  it("no devuelve un logo cuando no existe uno activo", () => {
+    const configuracion = {
+      id: "tienda",
+      logos: [
+        {
+          id: "logo-1",
+          nombre: "Logo principal",
+          imagen: "data:image/webp;base64,logo1",
+        },
+      ],
+      logoActivoId: null,
+      logo: "",
+    };
+
+    expect(
+      obtenerImagenLogoActivo(configuracion)
+    ).toBe("");
   });
 });
 
