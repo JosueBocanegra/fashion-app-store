@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { productosService } from '../services/productosService';
 import { Link } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
+import PublicidadCarrusel from "../components/PublicidadCarrusel";
 import { 
   ShoppingBag, 
   Truck, 
@@ -33,6 +34,9 @@ const Home = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {/* Carrusel de publicidades */}
+      <PublicidadCarrusel />
+      
       {/* Banner principal */}
       <div className="relative bg-gradient-to-br from-slate-900 via-purple-900 to-indigo-900 rounded-3xl shadow-2xl p-8 md:p-12 mb-12 overflow-hidden">
         <div className="absolute inset-0 opacity-5">
