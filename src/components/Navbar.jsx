@@ -10,7 +10,8 @@ import {
   ShoppingCart,
   LogIn,
   UserPlus,
-  LogOut
+  LogOut,
+  ClipboardList
 } from 'lucide-react';
 
 import { Link, useNavigate } from 'react-router-dom';
@@ -91,6 +92,14 @@ const Navbar = () => {
             {/* Autenticación de clientes */}
             {autenticado ? (
               <div className="flex items-center gap-3 px-3">
+                <Link
+                  to="/mis-pedidos"
+                  className="flex items-center gap-2 px-3 py-2 text-white/70 hover:text-white hover:bg-white/10 rounded-xl transition-all"
+                >
+                  <ClipboardList className="w-4 h-4" />
+                  Mis pedidos
+                </Link>
+
                 <span className="text-white text-sm">
                   Hola, {cliente.nombre}
                 </span>
@@ -178,6 +187,15 @@ const Navbar = () => {
                 <div className="px-4 py-3 text-white font-medium">
                   Hola, {cliente.nombre}
                 </div>
+
+                <Link
+                  to="/mis-pedidos"
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center gap-3 px-4 py-3 text-white/70 hover:text-white hover:bg-white/10 rounded-xl transition-all duration-300 font-medium"
+                >
+                  <ClipboardList className="w-5 h-5" />
+                  Mis pedidos
+                </Link>
 
                 <button
                   onClick={manejarCerrarSesion}
