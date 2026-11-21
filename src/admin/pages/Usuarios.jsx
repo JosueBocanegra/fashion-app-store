@@ -6,6 +6,7 @@ import {
   EyeOff,
   KeyRound,
   LoaderCircle,
+  LockKeyhole,
   Mail,
   Pencil,
   Search,
@@ -19,13 +20,23 @@ import {
 
 import { usuariosService } from "../services/usuariosService";
 import AdminPagination from "../components/AdminPagination";
+
+import {
+  MODULOS_DISPONIBLES,
+  normalizarModulos,
+} from "../utils/permisos";
+
 import "../styles/modulos.css";
 
 const initialForm = {
   nombre: "",
   email: "",
   password: "",
-  rol: "empleado",
+  modulos: [],
+};
+
+const esUsuarioAdmin = (usuario) => {
+  return String(usuario?.rol || "").toLowerCase() === "admin";
 };
 
 const obtenerEtiquetaRol = (rol) => {
@@ -54,12 +65,22 @@ const obtenerIniciales = (nombre) => {
     .toUpperCase();
 };
 
+const obtenerNombresModulos = (modulos) => {
+  return normalizarModulos(modulos).map((id) => {
+    const modulo = MODULOS_DISPONIBLES.find(
+      (item) => item.id === id
+    );
+
+    return modulo?.nombre || id;
+  });
+};
+
 const Usuarios = () => {
   const [usuarios, setUsuarios] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Formulario de registro y edición.
+  // Formulario.
   const [modalOpen, setModalOpen] = useState(false);
   const [editando, setEditando] = useState(null);
   const [form, setForm] = useState(initialForm);
@@ -77,7 +98,7 @@ const Usuarios = () => {
   const [eliminando, setEliminando] = useState(false);
   const [errorEliminar, setErrorEliminar] = useState("");
 
-  // Notificación.
+  // Notificaciones.
   const [toast, setToast] = useState(null);
 
   /* =====================================================
@@ -126,25 +147,36 @@ const Usuarios = () => {
   };
 
   /* =====================================================
-     APERTURA Y CIERRE DEL MODAL
+     FORMULARIO
      ===================================================== */
 
   const abrirNuevo = () => {
     setEditando(null);
-    setForm(initialForm);
+    setForm({
+      ...initialForm,
+      modulos: [],
+    });
     setErrorModal("");
     setMostrarPassword(false);
     setModalOpen(true);
   };
 
   const abrirEditar = (usuario) => {
+    // La cuenta administradora está protegida.
+    if (esUsuarioAdmin(usuario)) {
+      mostrarNotificacion(
+        "La cuenta administradora principal no se puede modificar."
+      );
+      return;
+    }
+
     setEditando(usuario.id);
 
     setForm({
       nombre: usuario.nombre || "",
       email: usuario.email || "",
       password: "",
-      rol: usuario.rol || "empleado",
+      modulos: normalizarModulos(usuario.modulos),
     });
 
     setErrorModal("");
@@ -171,6 +203,35 @@ const Usuarios = () => {
     }));
   };
 
+  const alternarModulo = (moduloId) => {
+    setForm((prev) => {
+      const yaSeleccionado = prev.modulos.includes(moduloId);
+
+      const nuevosModulos = yaSeleccionado
+        ? prev.modulos.filter((id) => id !== moduloId)
+        : [...prev.modulos, moduloId];
+
+      return {
+        ...prev,
+        modulos: normalizarModulos(nuevosModulos),
+      };
+    });
+  };
+
+  const seleccionarTodosLosModulos = () => {
+    setForm((prev) => ({
+      ...prev,
+      modulos: MODULOS_DISPONIBLES.map((modulo) => modulo.id),
+    }));
+  };
+
+  const limpiarModulos = () => {
+    setForm((prev) => ({
+      ...prev,
+      modulos: [],
+    }));
+  };
+
   /* =====================================================
      REGISTRO Y ACTUALIZACIÓN
      ===================================================== */
@@ -182,14 +243,19 @@ const Usuarios = () => {
     const nombre = form.nombre.trim();
     const email = form.email.trim();
     const passwordNueva = form.password.trim();
+    const modulos = normalizarModulos(form.modulos);
 
     if (!nombre || !email) {
-      setErrorModal("Ingresa el nombre y el correo electrónico.");
+      setErrorModal(
+        "Ingresa el nombre y el correo electrónico."
+      );
       return;
     }
 
     if (editando === null && !passwordNueva) {
-      setErrorModal("La contraseña es obligatoria para crear un usuario.");
+      setErrorModal(
+        "La contraseña es obligatoria para crear un usuario."
+      );
       return;
     }
 
@@ -198,56 +264,74 @@ const Usuarios = () => {
     try {
       if (editando !== null) {
         const usuarioOriginal = usuarios.find(
-          (usuario) => String(usuario.id) === String(editando)
+          (usuario) =>
+            String(usuario.id) === String(editando)
         );
 
         if (!usuarioOriginal) {
-          setErrorModal("No se encontró el usuario que deseas editar.");
+          setErrorModal(
+            "No se encontró el usuario que deseas editar."
+          );
           return;
         }
 
-        // Si no se escribe una contraseña nueva,
-        // se conserva la contraseña que ya tiene el usuario.
+        // Protección adicional para la cuenta administradora.
+        if (esUsuarioAdmin(usuarioOriginal)) {
+          setErrorModal(
+            "La cuenta administradora principal no se puede modificar."
+          );
+          return;
+        }
+
+        // Si no se ingresa una contraseña nueva,
+        // se conserva la contraseña actual.
         const passwordFinal =
           passwordNueva || usuarioOriginal.password || "";
 
         if (!passwordFinal) {
-          setErrorModal("Ingresa una contraseña para este usuario.");
+          setErrorModal(
+            "Ingresa una contraseña para este usuario."
+          );
           return;
         }
 
-        const usuarioActualizado = await usuariosService.actualizarUsuario(
+        const usuarioActualizado = {
+          ...usuarioOriginal,
+          nombre,
+          email,
+          password: passwordFinal,
+
+          // Un empleado nunca puede convertirse en administrador.
+          rol: "empleado",
+
+          // Módulos autorizados para esta cuenta.
+          modulos,
+        };
+
+        await usuariosService.actualizarUsuario(
           editando,
-          {
-            nombre,
-            email,
-            password: passwordFinal,
-            rol: form.rol,
-          }
+          usuarioActualizado
         );
 
         setUsuarios((prev) =>
           prev.map((usuario) =>
             String(usuario.id) === String(editando)
-              ? {
-                  ...usuario,
-                  nombre,
-                  email,
-                  password: passwordFinal,
-                  rol: form.rol,
-                  ...(usuarioActualizado || {}),
-                }
+              ? usuarioActualizado
               : usuario
           )
         );
 
-        mostrarNotificacion("Los datos del usuario se actualizaron correctamente.");
+        mostrarNotificacion(
+          "Los datos y permisos del empleado se actualizaron correctamente."
+        );
       } else {
+        // Todos los usuarios nuevos se crean como empleados.
         const nuevoUsuario = await usuariosService.crearUsuario({
           nombre,
           email,
           password: passwordNueva,
-          rol: form.rol,
+          rol: "empleado",
+          modulos,
         });
 
         setUsuarios((prev) => [
@@ -257,7 +341,9 @@ const Usuarios = () => {
 
         setPaginaActual(1);
 
-        mostrarNotificacion("El usuario se registró correctamente.");
+        mostrarNotificacion(
+          "El empleado se registró correctamente."
+        );
       }
 
       setModalOpen(false);
@@ -266,17 +352,27 @@ const Usuarios = () => {
       setMostrarPassword(false);
     } catch (err) {
       console.error("Error al guardar usuario:", err);
-      setErrorModal("No se pudo guardar el usuario. Intenta nuevamente.");
+
+      setErrorModal(
+        "No se pudo guardar el usuario. Intenta nuevamente."
+      );
     } finally {
       setGuardando(false);
     }
   };
 
   /* =====================================================
-     ELIMINACIÓN DE USUARIOS
+     ELIMINACIÓN
      ===================================================== */
 
   const abrirConfirmacionEliminar = (usuario) => {
+    if (esUsuarioAdmin(usuario)) {
+      mostrarNotificacion(
+        "La cuenta administradora principal no se puede eliminar."
+      );
+      return;
+    }
+
     setUsuarioAEliminar(usuario);
     setErrorEliminar("");
   };
@@ -291,11 +387,21 @@ const Usuarios = () => {
   const confirmarEliminar = async () => {
     if (!usuarioAEliminar) return;
 
+    // Protección adicional para impedir la eliminación del administrador.
+    if (esUsuarioAdmin(usuarioAEliminar)) {
+      setErrorEliminar(
+        "No está permitido eliminar la cuenta administradora principal."
+      );
+      return;
+    }
+
     setEliminando(true);
     setErrorEliminar("");
 
     try {
-      await usuariosService.eliminarUsuario(usuarioAEliminar.id);
+      await usuariosService.eliminarUsuario(
+        usuarioAEliminar.id
+      );
 
       setUsuarios((prev) =>
         prev.filter(
@@ -306,10 +412,15 @@ const Usuarios = () => {
 
       setUsuarioAEliminar(null);
 
-      mostrarNotificacion("El usuario se eliminó correctamente.");
+      mostrarNotificacion(
+        "El empleado se eliminó correctamente."
+      );
     } catch (err) {
       console.error("Error al eliminar usuario:", err);
-      setErrorEliminar("No se pudo eliminar el usuario. Intenta nuevamente.");
+
+      setErrorEliminar(
+        "No se pudo eliminar el empleado. Intenta nuevamente."
+      );
     } finally {
       setEliminando(false);
     }
@@ -324,11 +435,14 @@ const Usuarios = () => {
       usuario.nombre,
       usuario.email,
       usuario.rol,
+      ...obtenerNombresModulos(usuario.modulos),
     ]
       .join(" ")
       .toLocaleLowerCase("es");
 
-    return texto.includes(busqueda.trim().toLocaleLowerCase("es"));
+    return texto.includes(
+      busqueda.trim().toLocaleLowerCase("es")
+    );
   });
 
   /* =====================================================
@@ -354,7 +468,6 @@ const Usuarios = () => {
     paginaActualSegura * registrosPorPagina
   );
 
-  // Ajustar la página cuando se elimina un usuario.
   useEffect(() => {
     if (paginaActual > totalPaginas) {
       setPaginaActual(totalPaginas);
@@ -366,11 +479,11 @@ const Usuarios = () => {
      ===================================================== */
 
   const totalAdministradores = usuarios.filter(
-    (usuario) => usuario.rol === "admin"
+    (usuario) => esUsuarioAdmin(usuario)
   ).length;
 
   const totalEmpleados = usuarios.filter(
-    (usuario) => usuario.rol === "empleado"
+    (usuario) => !esUsuarioAdmin(usuario)
   ).length;
 
   /* =====================================================
@@ -392,7 +505,7 @@ const Usuarios = () => {
           </h1>
 
           <p className="admin-page-heading__description">
-            Administra las cuentas y los roles del personal que accede al sistema.
+            Administra las cuentas y asigna los módulos a los empleados.
           </p>
         </div>
 
@@ -402,7 +515,7 @@ const Usuarios = () => {
           className="admin-primary-button"
         >
           <UserPlus size={16} />
-          <span>Nuevo usuario</span>
+          <span>Nuevo empleado</span>
         </button>
       </section>
 
@@ -435,7 +548,7 @@ const Usuarios = () => {
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="admin-stat-card__label">
-                Administradores
+                Administrador principal
               </p>
 
               <p className="admin-stat-card__value">
@@ -443,7 +556,7 @@ const Usuarios = () => {
               </p>
 
               <p className="admin-stat-card__note">
-                Cuentas con rol administrador
+                Cuenta protegida del sistema
               </p>
             </div>
 
@@ -465,7 +578,7 @@ const Usuarios = () => {
               </p>
 
               <p className="admin-stat-card__note">
-                Cuentas con rol empleado
+                Cuentas administradas
               </p>
             </div>
 
@@ -512,7 +625,7 @@ const Usuarios = () => {
             type="text"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar por nombre, correo o rol..."
+            placeholder="Buscar por nombre, correo o módulo..."
             className="admin-field-control admin-search-input"
             aria-label="Buscar usuarios"
           />
@@ -579,8 +692,8 @@ const Usuarios = () => {
 
             <p>
               {busqueda
-                ? "Prueba con otro nombre, correo o rol."
-                : "Registra un nuevo usuario para comenzar."}
+                ? "Prueba con otro nombre, correo o módulo."
+                : "Registra un nuevo empleado para comenzar."}
             </p>
           </div>
         ) : (
@@ -590,7 +703,8 @@ const Usuarios = () => {
                 <tr>
                   <th>Usuario</th>
                   <th>Correo electrónico</th>
-                  <th>Rol asignado</th>
+                  <th>Rol</th>
+                  <th>Módulos asignados</th>
                   <th style={{ textAlign: "right" }}>
                     Acciones
                   </th>
@@ -598,90 +712,142 @@ const Usuarios = () => {
               </thead>
 
               <tbody>
-                {usuariosPaginados.map((usuario) => (
-                  <tr key={usuario.id}>
+                {usuariosPaginados.map((usuario) => {
+                  const esAdmin = esUsuarioAdmin(usuario);
 
-                    {/* Usuario */}
-                    <td>
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#F2E7E9] text-[12px] font-semibold text-[#702D40]">
-                          {obtenerIniciales(usuario.nombre)}
+                  const nombresModulos = esAdmin
+                    ? ["Todos los módulos"]
+                    : obtenerNombresModulos(usuario.modulos);
+
+                  return (
+                    <tr key={usuario.id}>
+
+                      {/* Usuario */}
+                      <td>
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold ${
+                              esAdmin
+                                ? "bg-[#F8EEF0] text-[#702D40]"
+                                : "bg-[#F2E7E9] text-[#702D40]"
+                            }`}
+                          >
+                            {obtenerIniciales(usuario.nombre)}
+                          </div>
+
+                          <div className="min-w-0">
+                            <p className="admin-table-primary-text">
+                              {usuario.nombre}
+                            </p>
+
+                            <span className="admin-table-secondary-text">
+                              {esAdmin
+                                ? "Cuenta principal protegida"
+                                : "Cuenta de empleado"}
+                            </span>
+                          </div>
                         </div>
+                      </td>
 
-                        <div className="min-w-0">
-                          <p className="admin-table-primary-text">
-                            {usuario.nombre}
-                          </p>
+                      {/* Correo */}
+                      <td>
+                        <div className="flex items-center gap-2">
+                          <Mail
+                            size={14}
+                            className="shrink-0 text-[#B7A493]"
+                          />
 
-                          <span className="admin-table-secondary-text">
-                            Cuenta de acceso
+                          <span className="break-all">
+                            {usuario.email}
                           </span>
                         </div>
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* Correo */}
-                    <td>
-                      <div className="flex items-center gap-2">
-                        <Mail
-                          size={14}
-                          className="shrink-0 text-[#B7A493]"
-                        />
+                      {/* Rol */}
+                      <td>
+                        <span
+                          className={`admin-pill ${
+                            esAdmin
+                              ? "admin-pill--promo"
+                              : "admin-pill--neutral"
+                          }`}
+                        >
+                          {esAdmin ? (
+                            <ShieldCheck size={12} />
+                          ) : (
+                            <UserRound size={12} />
+                          )}
 
-                        <span className="break-all">
-                          {usuario.email}
+                          {obtenerEtiquetaRol(usuario.rol)}
                         </span>
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* Rol */}
-                    <td>
-                      <span
-                        className={`admin-pill ${
-                          usuario.rol === "admin"
-                            ? "admin-pill--promo"
-                            : "admin-pill--neutral"
-                        }`}
-                      >
-                        {usuario.rol === "admin" && (
-                          <ShieldCheck size={12} />
+                      {/* Módulos */}
+                      <td>
+                        {esAdmin ? (
+                          <span className="admin-pill admin-pill--success">
+                            Acceso completo
+                          </span>
+                        ) : nombresModulos.length > 0 ? (
+                          <div className="flex max-w-[260px] flex-wrap gap-1.5">
+                            {nombresModulos.map((nombre) => (
+                              <span
+                                key={nombre}
+                                className="admin-pill admin-pill--neutral"
+                              >
+                                {nombre}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="admin-pill admin-pill--warning">
+                            Sin módulos asignados
+                          </span>
                         )}
+                      </td>
 
-                        {usuario.rol === "empleado" && (
-                          <UserRound size={12} />
-                        )}
+                      {/* Acciones */}
+                      <td>
+                        <div className="admin-row-actions">
+                          {esAdmin ? (
+                            <span
+                              className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-[#81786F]"
+                              title="La cuenta principal está protegida"
+                            >
+                              <LockKeyhole size={14} />
+                              Protegido
+                            </span>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => abrirEditar(usuario)}
+                                className="admin-row-action"
+                                title="Editar empleado y permisos"
+                                aria-label={`Editar usuario ${usuario.nombre}`}
+                              >
+                                <Pencil size={15} />
+                              </button>
 
-                        {obtenerEtiquetaRol(usuario.rol)}
-                      </span>
-                    </td>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  abrirConfirmacionEliminar(usuario)
+                                }
+                                className="admin-row-action admin-row-action--danger"
+                                title="Eliminar empleado"
+                                aria-label={`Eliminar usuario ${usuario.nombre}`}
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
 
-                    {/* Acciones */}
-                    <td>
-                      <div className="admin-row-actions">
-                        <button
-                          type="button"
-                          onClick={() => abrirEditar(usuario)}
-                          className="admin-row-action"
-                          title="Editar usuario"
-                          aria-label={`Editar usuario ${usuario.nombre}`}
-                        >
-                          <Pencil size={15} />
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => abrirConfirmacionEliminar(usuario)}
-                          className="admin-row-action admin-row-action--danger"
-                          title="Eliminar usuario"
-                          aria-label={`Eliminar usuario ${usuario.nombre}`}
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
-
-                  </tr>
-                ))}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -735,8 +901,8 @@ const Usuarios = () => {
                   className="admin-modal-header__title"
                 >
                   {editando !== null
-                    ? "Editar usuario"
-                    : "Registrar usuario"}
+                    ? "Editar empleado"
+                    : "Registrar empleado"}
                 </h2>
               </div>
 
@@ -752,7 +918,6 @@ const Usuarios = () => {
             </header>
 
             <form onSubmit={handleSubmit}>
-
               <div className="admin-modal-body">
 
                 {errorModal && (
@@ -786,7 +951,7 @@ const Usuarios = () => {
                       type="text"
                       value={form.nombre}
                       onChange={handleChange}
-                      placeholder="Ingresa el nombre del usuario"
+                      placeholder="Ingresa el nombre del empleado"
                       className="admin-field-control"
                       autoComplete="name"
                       required
@@ -879,33 +1044,61 @@ const Usuarios = () => {
                     </p>
                   </div>
 
-                  {/* Rol */}
+                  {/* Módulos */}
                   <div className="admin-form-field admin-form-field--full">
-                    <label
-                      htmlFor="usuario-rol"
-                      className="admin-form-label"
-                    >
-                      Rol del usuario
-                    </label>
+                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                      <label className="admin-form-label mb-0">
+                        Módulos permitidos
+                      </label>
 
-                    <select
-                      id="usuario-rol"
-                      name="rol"
-                      value={form.rol}
-                      onChange={handleChange}
-                      className="admin-field-control"
-                    >
-                      <option value="empleado">
-                        Empleado
-                      </option>
+                      <div className="flex gap-3">
+                        <button
+                          type="button"
+                          onClick={seleccionarTodosLosModulos}
+                          className="text-[10px] font-semibold text-[#702D40] hover:underline"
+                        >
+                          Seleccionar todos
+                        </button>
 
-                      <option value="admin">
-                        Administrador
-                      </option>
-                    </select>
+                        <button
+                          type="button"
+                          onClick={limpiarModulos}
+                          className="text-[10px] font-semibold text-[#827970] hover:underline"
+                        >
+                          Limpiar
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="admin-checkbox-panel space-y-3">
+                      {MODULOS_DISPONIBLES.map((modulo) => (
+                        <label
+                          key={modulo.id}
+                          className="flex cursor-pointer items-start gap-3"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={form.modulos.includes(modulo.id)}
+                            onChange={() => alternarModulo(modulo.id)}
+                            className="mt-1 h-4 w-4 shrink-0 accent-[#702D40]"
+                          />
+
+                          <span className="min-w-0">
+                            <span className="block text-xs font-semibold text-[#39332E]">
+                              {modulo.nombre}
+                            </span>
+
+                            <span className="mt-0.5 block text-[10px] leading-relaxed text-[#827970]">
+                              {modulo.descripcion}
+                            </span>
+                          </span>
+                        </label>
+                      ))}
+                    </div>
 
                     <p className="admin-form-help">
-                      Selecciona el tipo de cuenta que tendrá el usuario.
+                      El empleado solo podrá ingresar a los módulos seleccionados.
+                      Si no seleccionas ninguno, no tendrá acceso al panel.
                     </p>
                   </div>
 
@@ -944,13 +1137,12 @@ const Usuarios = () => {
 
                         {editando !== null
                           ? "Guardar cambios"
-                          : "Registrar usuario"}
+                          : "Registrar empleado"}
                       </>
                     )}
                   </button>
                 </div>
               </div>
-
             </form>
           </section>
         </div>
@@ -986,7 +1178,7 @@ const Usuarios = () => {
                   id="usuario-eliminar-title"
                   className="admin-modal-header__title"
                 >
-                  Eliminar usuario
+                  Eliminar empleado
                 </h2>
               </div>
 
@@ -1010,11 +1202,12 @@ const Usuarios = () => {
 
                 <div>
                   <p className="text-sm font-semibold text-[#292522]">
-                    ¿Estás seguro de eliminar este usuario?
+                    ¿Estás seguro de eliminar este empleado?
                   </p>
 
                   <p className="mt-1 text-xs leading-relaxed text-[#827970]">
-                    Se eliminará su cuenta del sistema. Esta acción no se puede deshacer.
+                    Se eliminará su cuenta y ya no podrá acceder al sistema.
+                    Esta acción no se puede deshacer.
                   </p>
                 </div>
               </div>
@@ -1033,14 +1226,8 @@ const Usuarios = () => {
                     {usuarioAEliminar.email}
                   </p>
 
-                  <span
-                    className={`admin-pill mt-2 ${
-                      usuarioAEliminar.rol === "admin"
-                        ? "admin-pill--promo"
-                        : "admin-pill--neutral"
-                    }`}
-                  >
-                    {obtenerEtiquetaRol(usuarioAEliminar.rol)}
+                  <span className="admin-pill admin-pill--neutral mt-2">
+                    Empleado
                   </span>
                 </div>
               </div>
@@ -1087,7 +1274,7 @@ const Usuarios = () => {
                   ) : (
                     <>
                       <Trash2 size={15} />
-                      Eliminar usuario
+                      Eliminar empleado
                     </>
                   )}
                 </button>

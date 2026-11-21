@@ -108,21 +108,30 @@
       "email": "JosePerez@gmail.com",
       "password": "123456",
       "rol": "empleado",
-      "id": "_JMrkfMIan4"
+      "id": "_JMrkfMIan4",
+      "modulos": [
+        "ventas"
+      ]
     },
     {
       "nombre": "Josué Bocanegra",
       "email": "josuebocanegra@gmail.com",
       "password": "123456",
       "rol": "empleado",
-      "id": "MnrR8xNUFGk"
+      "id": "MnrR8xNUFGk",
+      "modulos": [
+        "productos"
+      ]
     },
     {
       "nombre": "Santiago Quiroga",
       "email": "SantiagoQuiroga@gmail.com",
       "password": "123456",
       "rol": "empleado",
-      "id": "IHf8rYHzz1w"
+      "id": "IHf8rYHzz1w",
+      "modulos": [
+        "publicidad"
+      ]
     },
     {
       "nombre": "Anyelo Linares",

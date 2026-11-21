@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { obtenerRutaInicial } from "../utils/permisos";
 import {
   ArrowRight,
   Eye,
@@ -41,6 +42,7 @@ const Login = () => {
           nombre: user.nombre,
           email: user.email,
           rol: user.rol,
+          modulos: Array.isArray(user.modulos) ? user.modulos : [],
         };
 
         localStorage.setItem(
@@ -48,7 +50,8 @@ const Login = () => {
           JSON.stringify(payload)
         );
 
-        navigate("/admin/dashboard");
+        // Enviar al primer módulo autorizado.
+        navigate(obtenerRutaInicial(payload));
       } else {
         setError(
           "Las credenciales no coinciden con nuestros registros."
