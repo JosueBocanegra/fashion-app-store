@@ -1,18 +1,28 @@
+
 import { useEffect, useState } from "react";
 import {
+  AlertTriangle,
+  CheckCircle2,
+  Eye,
+  Image,
   ImagePlus,
-  Store,
-  Upload,
-  Trash2,
+  LoaderCircle,
   Pencil,
   Power,
-  X,
+  Search,
+  ShieldCheck,
   ShoppingBag,
-  CheckCircle2,
+  Store,
+  Trash2,
+  Upload,
+  X,
 } from "lucide-react";
 
 import { publicidadService } from "../services/publicidadService";
 import { convertirImagenOptimizada } from "../../services/imagenService";
+import AdminPagination from "../components/AdminPagination";
+
+import "../styles/modulos.css";
 
 const formularioPublicidadInicial = {
   titulo: "",
@@ -38,8 +48,7 @@ const generarId = () => {
   return `logo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 };
 
-// Permite conservar un logo registrado anteriormente
-// cuando se realiza la migración de la configuración.
+// Conserva la compatibilidad con configuraciones anteriores.
 const normalizarConfiguracion = (configuracion) => {
   const logos = Array.isArray(configuracion?.logos)
     ? configuracion.logos
@@ -67,7 +76,27 @@ const normalizarConfiguracion = (configuracion) => {
   };
 };
 
+const formatearFecha = (fecha) => {
+  if (!fecha) return "Fecha no disponible";
+
+  const date = new Date(fecha);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Fecha no disponible";
+  }
+
+  return date.toLocaleDateString("es-PE", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+};
+
 const Publicidad = () => {
+  /* =====================================================
+     DATOS PRINCIPALES
+     ===================================================== */
+
   const [publicidades, setPublicidades] = useState([]);
 
   const [configuracion, setConfiguracion] = useState({
@@ -78,46 +107,93 @@ const Publicidad = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Formulario de publicidad
+  /* =====================================================
+     FORMULARIO DE PUBLICIDAD
+     ===================================================== */
+
   const [modalOpen, setModalOpen] = useState(false);
   const [editando, setEditando] = useState(null);
-  const [form, setForm] = useState(formularioPublicidadInicial);
+
+  const [form, setForm] = useState(
+    formularioPublicidadInicial
+  );
+
   const [imagenPreview, setImagenPreview] = useState("");
   const [errorFormulario, setErrorFormulario] = useState("");
-  const [guardandoPublicidad, setGuardandoPublicidad] = useState(false);
 
-  // Operaciones de publicidades
+  const [guardandoPublicidad, setGuardandoPublicidad] =
+    useState(false);
+
+  const [procesandoImagenPublicidad, setProcesandoImagenPublicidad] =
+    useState(false);
+
+  /* =====================================================
+     OPERACIONES DE PUBLICIDAD
+     ===================================================== */
+
   const [actualizandoId, setActualizandoId] = useState(null);
   const [eliminandoId, setEliminandoId] = useState(null);
 
-  // Búsqueda y filtros
+  /* =====================================================
+     BÚSQUEDA, FILTROS Y PAGINACIÓN
+     ===================================================== */
+
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("todos");
 
-  // Formulario de logotipos
+  const [paginaActual, setPaginaActual] = useState(1);
+  const [registrosPorPagina, setRegistrosPorPagina] = useState(10);
+
+  /* =====================================================
+     FORMULARIO DE LOGOTIPOS
+     ===================================================== */
+
   const [nombreLogo, setNombreLogo] = useState("");
   const [imagenLogo, setImagenLogo] = useState("");
   const [logoPreview, setLogoPreview] = useState("");
+
   const [errorLogo, setErrorLogo] = useState("");
   const [mensajeLogo, setMensajeLogo] = useState("");
-  const [guardandoLogo, setGuardandoLogo] = useState(false);
 
-  // Carga inicial de publicidades y configuración.
+  const [guardandoLogo, setGuardandoLogo] = useState(false);
+  const [procesandoImagenLogo, setProcesandoImagenLogo] =
+    useState(false);
+
+  /* =====================================================
+     CONFIRMACIÓN Y NOTIFICACIONES
+     ===================================================== */
+
+  const [confirmacionEliminar, setConfirmacionEliminar] =
+    useState(null);
+
+  const [errorConfirmacion, setErrorConfirmacion] = useState("");
+
+  const [toast, setToast] = useState(null);
+
+  /* =====================================================
+     CARGA INICIAL
+     ===================================================== */
+
   const cargarDatos = async () => {
     setLoading(true);
     setError("");
 
     try {
-      const [publicidadesData, configuracionData] = await Promise.all([
-        publicidadService.obtenerPublicidad(),
-        publicidadService.obtenerConfiguracionTienda(),
-      ]);
+      const [publicidadesData, configuracionData] =
+        await Promise.all([
+          publicidadService.obtenerPublicidad(),
+          publicidadService.obtenerConfiguracionTienda(),
+        ]);
 
       setPublicidades(
-        Array.isArray(publicidadesData) ? publicidadesData : []
+        Array.isArray(publicidadesData)
+          ? publicidadesData
+          : []
       );
 
-      setConfiguracion(normalizarConfiguracion(configuracionData));
+      setConfiguracion(
+        normalizarConfiguracion(configuracionData)
+      );
     } catch (err) {
       console.error("Error cargando publicidad:", err);
 
@@ -133,9 +209,49 @@ const Publicidad = () => {
     cargarDatos();
   }, []);
 
-  // --------------------------------------------------
-  // PUBLICIDADES
-  // --------------------------------------------------
+  /* =====================================================
+     NOTIFICACIONES
+     ===================================================== */
+
+  useEffect(() => {
+    if (!toast) return;
+
+    const temporizador = window.setTimeout(() => {
+      setToast(null);
+    }, 3500);
+
+    return () => window.clearTimeout(temporizador);
+  }, [toast]);
+
+  const mostrarNotificacion = (mensaje) => {
+    setToast({
+      mensaje,
+      id: Date.now(),
+    });
+  };
+
+  /* =====================================================
+     DATOS DERIVADOS
+     ===================================================== */
+
+  const logos = Array.isArray(configuracion?.logos)
+    ? configuracion.logos
+    : [];
+
+  const logoActivo = logos.find(
+    (logo) =>
+      String(logo.id) === String(configuracion?.logoActivoId)
+  );
+
+  const totalActivas = publicidades.filter(
+    (item) => Boolean(item.estado)
+  ).length;
+
+  const totalInactivas = publicidades.length - totalActivas;
+
+  /* =====================================================
+     GESTIÓN DE PUBLICIDADES
+     ===================================================== */
 
   const abrirNuevaPublicidad = () => {
     setEditando(null);
@@ -160,6 +276,13 @@ const Publicidad = () => {
   };
 
   const cerrarModalPublicidad = () => {
+    if (
+      guardandoPublicidad ||
+      procesandoImagenPublicidad
+    ) {
+      return;
+    }
+
     setModalOpen(false);
     setEditando(null);
     setForm(formularioPublicidadInicial);
@@ -178,19 +301,28 @@ const Publicidad = () => {
     setErrorFormulario("");
   };
 
+  /* =====================================================
+     SELECCIÓN DE IMAGEN DE PUBLICIDAD
+     ===================================================== */
+
   const handleSeleccionarImagenPublicidad = async (e) => {
-    const archivo = e.target.files?.[0];
+    const input = e.currentTarget;
+    const archivo = input.files?.[0];
 
     if (!archivo) return;
 
     setErrorFormulario("");
+    setProcesandoImagenPublicidad(true);
 
     try {
-      const imagen = await convertirImagenOptimizada(archivo, {
-        maxWidth: 1600,
-        maxHeight: 900,
-        quality: 0.82,
-      });
+      const imagen = await convertirImagenOptimizada(
+        archivo,
+        {
+          maxWidth: 1600,
+          maxHeight: 900,
+          quality: 0.82,
+        }
+      );
 
       setForm((prev) => ({
         ...prev,
@@ -198,23 +330,38 @@ const Publicidad = () => {
       }));
 
       setImagenPreview(imagen);
+
+      mostrarNotificacion(
+        "La imagen se procesó correctamente."
+      );
     } catch (err) {
-      setErrorFormulario(err.message);
+      setErrorFormulario(
+        err.message || "No se pudo procesar la imagen."
+      );
     } finally {
-      e.target.value = "";
+      input.value = "";
+      setProcesandoImagenPublicidad(false);
     }
   };
+
+  /* =====================================================
+     REGISTRO Y EDICIÓN DE PUBLICIDAD
+     ===================================================== */
 
   const handleGuardarPublicidad = async (e) => {
     e.preventDefault();
 
     if (!form.titulo.trim()) {
-      setErrorFormulario("El nombre de la publicidad es obligatorio.");
+      setErrorFormulario(
+        "El nombre de la publicidad es obligatorio."
+      );
       return;
     }
 
     if (!form.imagen) {
-      setErrorFormulario("Debes seleccionar una imagen.");
+      setErrorFormulario(
+        "Debes seleccionar una imagen."
+      );
       return;
     }
 
@@ -226,12 +373,15 @@ const Publicidad = () => {
       descripcion: form.descripcion.trim(),
       imagen: form.imagen,
 
-      // Las nuevas publicidades se registran inactivas.
-      // Al editar se conserva el estado que ya tenían.
-      estado: editando ? Boolean(editando.estado) : false,
+      // Las nuevas publicidades comienzan inactivas.
+      // Al editar se conserva el estado anterior.
+      estado: editando
+        ? Boolean(editando.estado)
+        : false,
 
       fechaCreacion:
-        editando?.fechaCreacion || new Date().toISOString(),
+        editando?.fechaCreacion ||
+        new Date().toISOString(),
     };
 
     try {
@@ -249,15 +399,33 @@ const Publicidad = () => {
               : item
           )
         );
-      } else {
-        const nueva = await publicidadService.crearPublicidad(
-          publicidadData
-        );
 
-        setPublicidades((prev) => [...prev, nueva]);
+        mostrarNotificacion(
+          "La publicidad se actualizó correctamente."
+        );
+      } else {
+        const nueva =
+          await publicidadService.crearPublicidad(
+            publicidadData
+          );
+
+        setPublicidades((prev) => [
+          ...prev,
+          nueva,
+        ]);
+
+        setPaginaActual(1);
+
+        mostrarNotificacion(
+          "La publicidad se registró correctamente. Está inactiva."
+        );
       }
 
-      cerrarModalPublicidad();
+      setModalOpen(false);
+      setEditando(null);
+      setForm(formularioPublicidadInicial);
+      setImagenPreview("");
+      setErrorFormulario("");
     } catch (err) {
       console.error("Error guardando publicidad:", err);
 
@@ -269,8 +437,17 @@ const Publicidad = () => {
     }
   };
 
+  /* =====================================================
+     ACTIVAR Y DESACTIVAR PUBLICIDAD
+     ===================================================== */
+
   const handleCambiarEstadoPublicidad = async (publicidad) => {
-    if (actualizandoId !== null || eliminandoId !== null) return;
+    if (
+      actualizandoId !== null ||
+      eliminandoId !== null
+    ) {
+      return;
+    }
 
     const nuevoEstado = !Boolean(publicidad.estado);
 
@@ -295,58 +472,144 @@ const Publicidad = () => {
             : item
         )
       );
+
+      mostrarNotificacion(
+        nuevoEstado
+          ? "La publicidad se activó correctamente."
+          : "La publicidad se desactivó correctamente."
+      );
     } catch (err) {
       console.error("Error cambiando estado:", err);
-      setError("No se pudo cambiar el estado de la publicidad.");
+
+      setError(
+        "No se pudo cambiar el estado de la publicidad."
+      );
     } finally {
       setActualizandoId(null);
     }
   };
 
-  const handleEliminarPublicidad = async (publicidad) => {
-    const confirmar = window.confirm(
-      `¿Eliminar la publicidad "${publicidad.titulo}"? Esta acción no se puede deshacer.`
-    );
+  /* =====================================================
+     CONFIRMACIÓN DE ELIMINACIÓN
+     ===================================================== */
 
-    if (!confirmar || eliminandoId !== null) return;
+  const abrirConfirmacionEliminar = (tipo, elemento) => {
+    setConfirmacionEliminar({
+      tipo,
+      elemento,
+    });
 
-    setEliminandoId(publicidad.id);
-    setError("");
+    setErrorConfirmacion("");
+  };
 
-    try {
-      await publicidadService.eliminarPublicidad(publicidad.id);
+  const cerrarConfirmacionEliminar = () => {
+    if (
+      eliminandoId !== null ||
+      guardandoLogo
+    ) {
+      return;
+    }
 
-      setPublicidades((prev) =>
-        prev.filter(
-          (item) => String(item.id) !== String(publicidad.id)
-        )
-      );
-    } catch (err) {
-      console.error("Error eliminando publicidad:", err);
-      setError("No se pudo eliminar la publicidad.");
-    } finally {
-      setEliminandoId(null);
+    setConfirmacionEliminar(null);
+    setErrorConfirmacion("");
+  };
+
+  const confirmarEliminar = async () => {
+    if (!confirmacionEliminar) return;
+
+    const { tipo, elemento } = confirmacionEliminar;
+
+    setErrorConfirmacion("");
+
+    // Eliminar publicidad.
+    if (tipo === "publicidad") {
+      if (eliminandoId !== null) return;
+
+      setEliminandoId(elemento.id);
+
+      try {
+        await publicidadService.eliminarPublicidad(
+          elemento.id
+        );
+
+        setPublicidades((prev) =>
+          prev.filter(
+            (item) =>
+              String(item.id) !== String(elemento.id)
+          )
+        );
+
+        setConfirmacionEliminar(null);
+
+        mostrarNotificacion(
+          "La publicidad se eliminó correctamente."
+        );
+      } catch (err) {
+        console.error("Error eliminando publicidad:", err);
+
+        setErrorConfirmacion(
+          "No se pudo eliminar la publicidad. Intenta nuevamente."
+        );
+      } finally {
+        setEliminandoId(null);
+      }
+
+      return;
+    }
+
+    // Eliminar logotipo.
+    if (tipo === "logo") {
+      if (guardandoLogo) return;
+
+      setGuardandoLogo(true);
+
+      try {
+        const nuevaLista = logos.filter(
+          (item) =>
+            String(item.id) !== String(elemento.id)
+        );
+
+        const nuevoLogoActivoId =
+          String(configuracion.logoActivoId) === String(elemento.id)
+            ? null
+            : configuracion.logoActivoId;
+
+        await guardarConfiguracionLogos(
+          nuevaLista,
+          nuevoLogoActivoId
+        );
+
+        setConfirmacionEliminar(null);
+
+        const mensaje = "El logotipo se eliminó correctamente.";
+
+        setMensajeLogo(mensaje);
+        mostrarNotificacion(mensaje);
+      } catch (err) {
+        console.error("Error eliminando logo:", err);
+
+        setErrorConfirmacion(
+          "No se pudo eliminar el logotipo. Intenta nuevamente."
+        );
+      } finally {
+        setGuardandoLogo(false);
+      }
     }
   };
 
-  // --------------------------------------------------
-  // LOGOTIPOS
-  // --------------------------------------------------
+  /* =====================================================
+     CONFIGURACIÓN Y LOGOTIPOS
+     ===================================================== */
 
-  const logos = configuracion?.logos || [];
-
-  const logoActivo = logos.find(
-    (logo) =>
-      String(logo.id) === String(configuracion?.logoActivoId)
-  );
-
-  // Actualiza la configuración y comunica el nuevo logo
-  // a los componentes que lo utilizan.
-  const guardarConfiguracionLogos = async (nuevaLista, nuevoLogoActivoId) => {
-    const resultado = await publicidadService.actualizarLogos(
-      nuevaLista,
-      nuevoLogoActivoId
-    );
+  const guardarConfiguracionLogos = async (
+    nuevaLista,
+    nuevoLogoActivoId
+  ) => {
+    const resultado =
+      await publicidadService.actualizarLogos(
+        nuevaLista,
+        nuevoLogoActivoId
+      );
 
     const configuracionActualizada =
       normalizarConfiguracion(resultado);
@@ -359,6 +622,7 @@ const Publicidad = () => {
         String(configuracionActualizada.logoActivoId)
     );
 
+    // Actualizar el logo en los componentes que lo utilizan.
     window.dispatchEvent(
       new CustomEvent("logo-tienda-actualizado", {
         detail: {
@@ -370,40 +634,66 @@ const Publicidad = () => {
     return configuracionActualizada;
   };
 
+  /* =====================================================
+     SELECCIÓN DE IMAGEN DE LOGOTIPO
+     ===================================================== */
+
   const handleSeleccionarLogo = async (e) => {
-    const archivo = e.target.files?.[0];
+    const input = e.currentTarget;
+    const archivo = input.files?.[0];
 
     if (!archivo) return;
 
     setErrorLogo("");
     setMensajeLogo("");
+    setProcesandoImagenLogo(true);
 
     try {
-      const imagen = await convertirImagenOptimizada(archivo, {
-        maxWidth: 700,
-        maxHeight: 300,
-        quality: 0.88,
-      });
+      const imagen = await convertirImagenOptimizada(
+        archivo,
+        {
+          maxWidth: 700,
+          maxHeight: 300,
+          quality: 0.88,
+        }
+      );
 
       setImagenLogo(imagen);
       setLogoPreview(imagen);
+
+      mostrarNotificacion(
+        "La imagen del logotipo se procesó correctamente."
+      );
     } catch (err) {
-      setErrorLogo(err.message);
+      setErrorLogo(
+        err.message || "No se pudo procesar la imagen."
+      );
     } finally {
-      e.target.value = "";
+      input.value = "";
+      setProcesandoImagenLogo(false);
     }
   };
 
+  /* =====================================================
+     REGISTRAR LOGOTIPO
+     ===================================================== */
+
   const handleGuardarLogo = async () => {
     if (!nombreLogo.trim()) {
-      setErrorLogo("Debes ingresar un nombre para el logotipo.");
+      setErrorLogo(
+        "Debes ingresar un nombre para el logotipo."
+      );
       return;
     }
 
     if (!imagenLogo) {
-      setErrorLogo("Debes seleccionar una imagen para el logotipo.");
+      setErrorLogo(
+        "Debes seleccionar una imagen para el logotipo."
+      );
       return;
     }
+
+    if (guardandoLogo || procesandoImagenLogo) return;
 
     setGuardandoLogo(true);
     setErrorLogo("");
@@ -417,6 +707,7 @@ const Publicidad = () => {
         fechaCreacion: new Date().toISOString(),
       };
 
+      // Guardar sin cambiar el logo que ya está activo.
       await guardarConfiguracionLogos(
         [...logos, nuevoLogo],
         configuracion.logoActivoId || null
@@ -426,19 +717,30 @@ const Publicidad = () => {
       setImagenLogo("");
       setLogoPreview("");
 
-      setMensajeLogo(
-        "El logotipo se guardó correctamente. Puedes activarlo cuando lo necesites."
+      const mensaje =
+        "El logotipo se guardó correctamente. Puedes activarlo cuando lo necesites.";
+
+      setMensajeLogo(mensaje);
+      mostrarNotificacion(
+        "El logotipo se registró correctamente."
       );
     } catch (err) {
       console.error("Error guardando logo:", err);
-      setErrorLogo("No se pudo guardar el logotipo.");
+
+      setErrorLogo(
+        "No se pudo guardar el logotipo."
+      );
     } finally {
       setGuardandoLogo(false);
     }
   };
 
+  /* =====================================================
+     ACTIVAR LOGOTIPO
+     ===================================================== */
+
   const handleActivarLogo = async (logo) => {
-    if (guardandoLogo) return;
+    if (guardandoLogo || procesandoImagenLogo) return;
 
     if (
       String(configuracion.logoActivoId) === String(logo.id)
@@ -451,180 +753,360 @@ const Publicidad = () => {
     setMensajeLogo("");
 
     try {
-      await guardarConfiguracionLogos(logos, logo.id);
+      await guardarConfiguracionLogos(
+        logos,
+        logo.id
+      );
 
-      setMensajeLogo(
-        `El logotipo "${logo.nombre}" ahora está activo en la tienda.`
+      const mensaje =
+        `El logotipo "${logo.nombre}" ahora está activo en la tienda.`;
+
+      setMensajeLogo(mensaje);
+      mostrarNotificacion(
+        "El logotipo se activó correctamente."
       );
     } catch (err) {
       console.error("Error activando logo:", err);
-      setErrorLogo("No se pudo activar el logotipo.");
+
+      setErrorLogo(
+        "No se pudo activar el logotipo."
+      );
     } finally {
       setGuardandoLogo(false);
     }
   };
 
+  /* =====================================================
+     DESACTIVAR LOGOTIPO
+     ===================================================== */
+
   const handleDesactivarLogo = async () => {
-    if (guardandoLogo) return;
+    if (guardandoLogo || procesandoImagenLogo) return;
 
     setGuardandoLogo(true);
     setErrorLogo("");
     setMensajeLogo("");
 
     try {
-      await guardarConfiguracionLogos(logos, null);
+      await guardarConfiguracionLogos(
+        logos,
+        null
+      );
 
-      setMensajeLogo(
-        "Se desactivó el logotipo. Se mostrará la identidad predeterminada."
+      const mensaje =
+        "Se desactivó el logotipo. Se mostrará la identidad predeterminada.";
+
+      setMensajeLogo(mensaje);
+      mostrarNotificacion(
+        "Se desactivó el logotipo actual."
       );
     } catch (err) {
       console.error("Error desactivando logo:", err);
-      setErrorLogo("No se pudo desactivar el logotipo.");
+
+      setErrorLogo(
+        "No se pudo desactivar el logotipo."
+      );
     } finally {
       setGuardandoLogo(false);
     }
   };
 
-  const handleEliminarLogo = async (logo) => {
-    const confirmar = window.confirm(
-      `¿Eliminar el logotipo "${logo.nombre}"? Esta acción no se puede deshacer.`
-    );
+  /* =====================================================
+     BÚSQUEDA Y FILTROS
+     ===================================================== */
 
-    if (!confirmar || guardandoLogo) return;
+  const publicidadesFiltradas = publicidades.filter(
+    (publicidad) => {
+      const texto = [
+        publicidad.titulo || "",
+        publicidad.descripcion || "",
+      ]
+        .join(" ")
+        .toLocaleLowerCase("es");
 
-    setGuardandoLogo(true);
-    setErrorLogo("");
-    setMensajeLogo("");
-
-    try {
-      const nuevaLista = logos.filter(
-        (item) => String(item.id) !== String(logo.id)
+      const coincideBusqueda = texto.includes(
+        busqueda.trim().toLocaleLowerCase("es")
       );
 
-      const nuevoLogoActivoId =
-        String(configuracion.logoActivoId) === String(logo.id)
-          ? null
-          : configuracion.logoActivoId;
+      const estado = Boolean(publicidad.estado);
 
-      await guardarConfiguracionLogos(
-        nuevaLista,
-        nuevoLogoActivoId
-      );
+      const coincideEstado =
+        filtroEstado === "todos" ||
+        (filtroEstado === "activas" && estado) ||
+        (filtroEstado === "inactivas" && !estado);
 
-      setMensajeLogo("El logotipo se eliminó correctamente.");
-    } catch (err) {
-      console.error("Error eliminando logo:", err);
-      setErrorLogo("No se pudo eliminar el logotipo.");
-    } finally {
-      setGuardandoLogo(false);
+      return coincideBusqueda && coincideEstado;
     }
-  };
+  );
 
-  // --------------------------------------------------
-  // FILTROS Y CONTADORES
-  // --------------------------------------------------
+  /* =====================================================
+     PAGINACIÓN
+     ===================================================== */
 
-  const publicidadesFiltradas = publicidades.filter((publicidad) => {
-    const texto = `${publicidad.titulo || ""} ${
-      publicidad.descripcion || ""
-    }`.toLocaleLowerCase("es");
+  useEffect(() => {
+    setPaginaActual(1);
+  }, [busqueda, filtroEstado, registrosPorPagina]);
 
-    const coincideBusqueda = texto.includes(
-      busqueda.toLocaleLowerCase("es")
-    );
+  const totalPaginas = Math.max(
+    1,
+    Math.ceil(
+      publicidadesFiltradas.length / registrosPorPagina
+    )
+  );
 
-    const estado = Boolean(publicidad.estado);
+  const paginaActualSegura = Math.min(
+    paginaActual,
+    totalPaginas
+  );
 
-    const coincideEstado =
-      filtroEstado === "todos" ||
-      (filtroEstado === "activas" && estado) ||
-      (filtroEstado === "inactivas" && !estado);
+  const publicidadesPaginadas = publicidadesFiltradas.slice(
+    (paginaActualSegura - 1) * registrosPorPagina,
+    paginaActualSegura * registrosPorPagina
+  );
 
-    return coincideBusqueda && coincideEstado;
-  });
+  useEffect(() => {
+    if (paginaActual > totalPaginas) {
+      setPaginaActual(totalPaginas);
+    }
+  }, [paginaActual, totalPaginas]);
 
-  const totalActivas = publicidades.filter(
-    (item) => Boolean(item.estado)
-  ).length;
+  /* =====================================================
+     ESTADO DE CONFIRMACIÓN
+     ===================================================== */
 
-  // --------------------------------------------------
-  // VISTA
-  // --------------------------------------------------
+  const confirmacionEsPublicidad =
+    confirmacionEliminar?.tipo === "publicidad";
+
+  const confirmacionEnProceso = confirmacionEliminar
+    ? confirmacionEsPublicidad
+      ? String(eliminandoId) ===
+        String(confirmacionEliminar.elemento.id)
+      : guardandoLogo
+    : false;
+
+  /* =====================================================
+     INTERFAZ
+     ===================================================== */
 
   return (
-    <div className="space-y-8">
+    <div className="admin-module-page">
 
-      {/* Encabezado general */}
-      <div>
-        <h1 className="text-2xl font-light text-neutral-900 tracking-tight">
-          Gestión de publicidad
-        </h1>
+      {/* =================================================
+          ENCABEZADO
+          ================================================= */}
 
-        <p className="text-neutral-500 text-sm mt-1">
-          Administra los logotipos y las imágenes promocionales de Fashion Store.
-        </p>
-      </div>
+      <section className="admin-page-heading">
+        <div>
+          <p className="admin-page-heading__eyebrow">
+            Administración de tienda
+          </p>
+
+          <h1 className="admin-page-heading__title">
+            Publicidad y logotipos
+          </h1>
+
+          <p className="admin-page-heading__description">
+            Gestiona la identidad visual y las imágenes promocionales
+            que se muestran en Fashion Store.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={abrirNuevaPublicidad}
+          className="admin-primary-button"
+        >
+          <ImagePlus size={16} />
+          Nueva publicidad
+        </button>
+      </section>
+
+      {/* =================================================
+          MENSAJE DE ERROR GENERAL
+          ================================================= */}
 
       {error && (
-        <div className="bg-rose-50 border border-rose-200 text-rose-800 text-sm rounded-xl p-3.5">
-          {error}
+        <div
+          className="admin-alert admin-alert--error"
+          role="alert"
+        >
+          <AlertTriangle
+            size={17}
+            className="shrink-0"
+          />
+
+          <span>{error}</span>
+
+          <button
+            type="button"
+            onClick={cargarDatos}
+            className="ml-auto shrink-0 text-xs font-semibold underline"
+          >
+            Reintentar
+          </button>
         </div>
       )}
 
       {/* =================================================
+          INDICADORES
+          ================================================= */}
+
+      <section className="admin-stat-grid">
+
+        <article className="admin-stat-card">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="admin-stat-card__label">
+                Publicidades registradas
+              </p>
+
+              <p className="admin-stat-card__value">
+                {publicidades.length}
+              </p>
+
+              <p className="admin-stat-card__note">
+                Total de anuncios
+              </p>
+            </div>
+
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#F5F1EB] text-[#702D40]">
+              <Image size={21} />
+            </div>
+          </div>
+        </article>
+
+        <article className="admin-stat-card">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="admin-stat-card__label">
+                Publicidades activas
+              </p>
+
+              <p className="admin-stat-card__value">
+                {totalActivas}
+              </p>
+
+              <p className="admin-stat-card__note">
+                Visibles en el carrusel
+              </p>
+            </div>
+
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#EDF5EF] text-[#47775B]">
+              <CheckCircle2 size={21} />
+            </div>
+          </div>
+        </article>
+
+        <article className="admin-stat-card">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="admin-stat-card__label">
+                Publicidades inactivas
+              </p>
+
+              <p className="admin-stat-card__value">
+                {totalInactivas}
+              </p>
+
+              <p className="admin-stat-card__note">
+                Anuncios guardados
+              </p>
+            </div>
+
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#FAF3E7] text-[#906A2E]">
+              <Power size={21} />
+            </div>
+          </div>
+        </article>
+
+        <article className="admin-stat-card">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="admin-stat-card__label">
+                Logotipos guardados
+              </p>
+
+              <p className="admin-stat-card__value">
+                {logos.length}
+              </p>
+
+              <p className="admin-stat-card__note">
+                Versiones almacenadas
+              </p>
+            </div>
+
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#F5F1EB] text-[#827970]">
+              <Store size={21} />
+            </div>
+          </div>
+        </article>
+
+      </section>
+
+      {/* =================================================
           SECCIÓN 1: LOGOTIPOS
-      ================================================== */}
-      <section className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
+          ================================================= */}
 
-        <div className="px-5 py-4 border-b border-stone-100">
+      <section className="admin-table-card">
+
+        {/* Encabezado de sección */}
+        <div className="flex flex-col gap-2 border-b border-[#EEE8E1] px-5 py-5 sm:px-6">
           <div className="flex items-center gap-2">
-            <Store size={19} className="text-[#8a5a63]" />
+            <Store
+              size={19}
+              className="text-[#702D40]"
+            />
 
-            <h2 className="font-semibold text-neutral-800">
-              Logotipos de la tienda
+            <h2 className="text-base font-semibold text-[#292522]">
+              Identidad de la tienda
             </h2>
           </div>
 
-          <p className="text-xs text-neutral-500 mt-1">
-            Guarda diferentes versiones del logo y selecciona cuál deseas utilizar.
+          <p className="text-xs leading-relaxed text-[#827970]">
+            Guarda diferentes versiones del logotipo y selecciona cuál
+            deseas mostrar en el sitio web y en el panel administrativo.
           </p>
         </div>
 
-        <div className="p-5 space-y-6">
+        <div className="space-y-6 p-5 sm:p-6">
 
-          {/* Logo actualmente activo */}
-          <div className="flex flex-col md:flex-row md:items-center gap-5 p-4 rounded-xl bg-stone-50 border border-stone-200">
+          {/* Logotipo activo */}
+          <div className="flex flex-col gap-5 rounded-xl border border-[#E9E2DA] bg-[#F8F5F1] p-4 md:flex-row md:items-center">
 
-            <div className="w-full md:w-56 h-24 rounded-lg bg-white border border-stone-200 flex items-center justify-center overflow-hidden p-4">
+            <div className="flex h-28 w-full shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[#E9E2DA] bg-white p-4 md:w-60">
               {logoActivo ? (
                 <img
                   src={resolverRutaImagen(logoActivo.imagen)}
                   alt={logoActivo.nombre}
-                  className="max-w-full max-h-full object-contain"
+                  className="max-h-full max-w-full object-contain"
                 />
               ) : (
-                <div className="flex items-center gap-2 text-neutral-700">
-                  <ShoppingBag className="w-8 h-8 text-[#8a5a63]" />
-                  <span className="text-lg font-bold">
+                <div className="flex items-center gap-2 text-[#292522]">
+                  <ShoppingBag
+                    size={30}
+                    className="text-[#702D40]"
+                  />
+
+                  <span className="text-lg font-semibold">
                     Fashion Store
                   </span>
                 </div>
               )}
             </div>
 
-            <div className="flex-1">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#827970]">
                 Identidad visible actualmente
-              </span>
+              </p>
 
-              <h3 className="text-sm font-semibold text-neutral-800 mt-1">
+              <h3 className="mt-1 text-sm font-semibold text-[#292522]">
                 {logoActivo?.nombre || "Logo predeterminado"}
               </h3>
 
-              <p className="text-xs text-neutral-500 mt-1">
+              <p className="mt-1 max-w-xl text-xs leading-relaxed text-[#827970]">
                 {logoActivo
-                  ? "Este logotipo se muestra en el sitio web y en el panel administrativo."
-                  : "Actualmente se muestra el identificador predeterminado de Fashion Store."}
+                  ? "Este logotipo se utiliza en el sitio web y en el panel administrativo."
+                  : "Actualmente se muestra la identidad predeterminada de Fashion Store."}
               </p>
 
               {logoActivo && (
@@ -632,86 +1114,123 @@ const Publicidad = () => {
                   type="button"
                   onClick={handleDesactivarLogo}
                   disabled={guardandoLogo}
-                  className="mt-3 text-xs font-semibold text-amber-700 hover:text-amber-800 disabled:opacity-50 cursor-pointer"
+                  className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-[#906A2E] hover:text-[#75531F] disabled:opacity-50"
                 >
+                  <Power size={14} />
                   Desactivar logo actual
                 </button>
               )}
             </div>
 
-            {logoActivo && (
-              <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full px-3 py-1.5 text-xs font-semibold">
-                <CheckCircle2 size={14} />
+            {logoActivo ? (
+              <span className="admin-pill admin-pill--success self-start md:self-center">
+                <CheckCircle2 size={13} />
                 Activo
+              </span>
+            ) : (
+              <span className="admin-pill admin-pill--neutral self-start md:self-center">
+                Predeterminado
               </span>
             )}
           </div>
 
-          {/* Formulario para añadir logos */}
-          <div className="border border-stone-200 rounded-xl p-4 space-y-4">
-            <div>
-              <h3 className="text-sm font-semibold text-neutral-800">
+          {/* Formulario para registrar logotipo */}
+          <div className="rounded-xl border border-[#E9E2DA] p-4 sm:p-5">
+
+            <div className="mb-4">
+              <h3 className="text-sm font-semibold text-[#292522]">
                 Registrar nuevo logotipo
               </h3>
 
-              <p className="text-xs text-neutral-500 mt-1">
-                Puedes almacenar varios logos sin cambiar el que se está utilizando actualmente.
+              <p className="mt-1 text-xs text-[#827970]">
+                Puedes guardar varios logotipos sin cambiar automáticamente
+                el que está activo.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 
-              <div>
-                <label className="block text-xs font-semibold text-neutral-600 mb-1.5">
+              {/* Nombre */}
+              <div className="admin-form-field">
+                <label
+                  htmlFor="nombre-logo"
+                  className="admin-form-label"
+                >
                   Nombre del logotipo
                 </label>
 
                 <input
+                  id="nombre-logo"
                   type="text"
                   value={nombreLogo}
-                  onChange={(e) => setNombreLogo(e.target.value)}
+                  onChange={(e) => {
+                    setNombreLogo(e.target.value);
+                    setErrorLogo("");
+                    setMensajeLogo("");
+                  }}
                   placeholder="Ej. Logo principal, logo navideño..."
                   maxLength={60}
-                  className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm text-neutral-800 focus:outline-none focus:border-[#8a5a63] focus:ring-2 focus:ring-[#8a5a63]/10"
+                  className="admin-field-control"
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-neutral-600 mb-1.5">
+              {/* Imagen */}
+              <div className="admin-form-field">
+                <label className="admin-form-label">
                   Imagen del logotipo
                 </label>
 
-                <label className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-stone-100 hover:bg-stone-200 border border-stone-200 text-neutral-700 text-xs font-semibold cursor-pointer transition-colors">
-                  <Upload size={15} />
-                  Seleccionar imagen
+                <label
+                  className={`admin-secondary-button w-full cursor-pointer ${
+                    procesandoImagenLogo ? "opacity-60" : ""
+                  }`}
+                >
+                  {procesandoImagenLogo ? (
+                    <LoaderCircle
+                      size={15}
+                      className="animate-spin"
+                    />
+                  ) : (
+                    <Upload size={15} />
+                  )}
+
+                  {procesandoImagenLogo
+                    ? "Procesando imagen..."
+                    : "Seleccionar imagen"}
 
                   <input
                     type="file"
                     accept="image/jpeg,image/png,image/webp"
                     onChange={handleSeleccionarLogo}
+                    disabled={
+                      guardandoLogo ||
+                      procesandoImagenLogo
+                    }
                     className="hidden"
                   />
                 </label>
               </div>
+
             </div>
 
+            {/* Vista previa del logotipo */}
             {logoPreview && (
-              <div className="flex items-center gap-4 p-3 rounded-lg bg-stone-50 border border-stone-200">
-                <div className="w-36 h-16 bg-white rounded-md border border-stone-200 p-2 flex items-center justify-center">
+              <div className="mt-4 flex flex-col gap-3 rounded-xl border border-[#E9E2DA] bg-[#F8F5F1] p-3 sm:flex-row sm:items-center">
+                <div className="flex h-20 w-full shrink-0 items-center justify-center rounded-lg border border-[#E9E2DA] bg-white p-3 sm:w-36">
                   <img
                     src={resolverRutaImagen(logoPreview)}
                     alt="Vista previa del logotipo"
-                    className="max-w-full max-h-full object-contain"
+                    className="max-h-full max-w-full object-contain"
                   />
                 </div>
 
-                <div className="flex-1">
-                  <p className="text-xs font-semibold text-neutral-700">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-[#39332E]">
                     Vista previa
                   </p>
 
-                  <p className="text-xs text-neutral-500 mt-1">
-                    Este logo todavía no está guardado.
+                  <p className="mt-1 text-[11px] text-[#827970]">
+                    Este logotipo todavía no está guardado.
                   </p>
                 </div>
 
@@ -721,17 +1240,20 @@ const Publicidad = () => {
                     setImagenLogo("");
                     setLogoPreview("");
                   }}
-                  className="text-neutral-400 hover:text-rose-600 cursor-pointer"
+                  disabled={guardandoLogo}
+                  className="admin-row-action admin-row-action--danger self-end sm:self-center"
                   aria-label="Quitar imagen seleccionada"
+                  title="Quitar imagen"
                 >
-                  <X size={18} />
+                  <X size={17} />
                 </button>
               </div>
             )}
 
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <p className="text-[11px] text-neutral-400">
-                Formatos permitidos: JPG, PNG o WEBP. Máximo 5 MB.
+            {/* Pie del formulario */}
+            <div className="mt-4 flex flex-col gap-3 border-t border-[#EEE8E1] pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-[10px] leading-relaxed text-[#9A9087]">
+                Formatos permitidos: JPG, PNG o WEBP. Tamaño máximo: 5 MB.
               </p>
 
               <button
@@ -741,54 +1263,91 @@ const Publicidad = () => {
                   loading ||
                   !nombreLogo.trim() ||
                   !imagenLogo ||
-                  guardandoLogo
+                  guardandoLogo ||
+                  procesandoImagenLogo
                 }
-                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-white text-xs font-semibold bg-[#8a5a63] hover:bg-[#754b53] disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                className="admin-primary-button"
               >
-                <ImagePlus size={15} />
-                {guardandoLogo ? "Guardando..." : "Guardar logotipo"}
+                {guardandoLogo ? (
+                  <>
+                    <LoaderCircle
+                      size={15}
+                      className="animate-spin"
+                    />
+                    Guardando...
+                  </>
+                ) : (
+                  <>
+                    <ImagePlus size={15} />
+                    Guardar logotipo
+                  </>
+                )}
               </button>
             </div>
 
+            {/* Mensajes del formulario */}
             {errorLogo && (
-              <p className="text-xs text-rose-600">
-                {errorLogo}
-              </p>
+              <div
+                className="admin-alert admin-alert--error mt-4"
+                role="alert"
+              >
+                <AlertTriangle
+                  size={16}
+                  className="shrink-0"
+                />
+                <span>{errorLogo}</span>
+              </div>
             )}
 
             {mensajeLogo && (
-              <p className="text-xs text-emerald-700">
-                {mensajeLogo}
-              </p>
+              <div
+                className="admin-alert admin-alert--success mt-4"
+                role="status"
+              >
+                <CheckCircle2
+                  size={16}
+                  className="shrink-0"
+                />
+                <span>{mensajeLogo}</span>
+              </div>
             )}
           </div>
 
-          {/* Galería de logos */}
+          {/* Galería de logotipos */}
           <div>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-neutral-800">
-                Logotipos almacenados
-              </h3>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h3 className="text-sm font-semibold text-[#292522]">
+                  Logotipos almacenados
+                </h3>
 
-              <span className="text-xs text-neutral-500">
+                <p className="mt-1 text-[11px] text-[#827970]">
+                  Activa el logotipo que deseas utilizar.
+                </p>
+              </div>
+
+              <span className="admin-pill admin-pill--neutral">
                 {logos.length} registrados
               </span>
             </div>
 
             {logos.length === 0 ? (
-              <div className="border border-dashed border-stone-300 rounded-xl p-8 text-center">
-                <Store size={30} className="mx-auto text-stone-300 mb-2" />
+              <div className="rounded-xl border border-dashed border-[#D9D0C6] bg-[#FAF8F5] p-8 text-center">
+                <Store
+                  size={30}
+                  className="mx-auto mb-3 text-[#B7A493]"
+                />
 
-                <p className="text-sm font-medium text-neutral-700">
+                <p className="text-sm font-semibold text-[#514840]">
                   Todavía no hay logotipos registrados.
                 </p>
 
-                <p className="text-xs text-neutral-400 mt-1">
+                <p className="mt-1 text-xs text-[#9A9087]">
                   Selecciona una imagen y guárdala para comenzar tu colección.
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {logos.map((logo) => {
                   const activo =
                     String(logo.id) ===
@@ -797,38 +1356,45 @@ const Publicidad = () => {
                   return (
                     <article
                       key={logo.id}
-                      className={`border rounded-xl overflow-hidden ${
+                      className={`overflow-hidden rounded-xl border bg-white transition-shadow hover:shadow-sm ${
                         activo
-                          ? "border-emerald-300 ring-1 ring-emerald-100"
-                          : "border-stone-200"
+                          ? "border-[#B7A493] ring-1 ring-[#B7A493]/30"
+                          : "border-[#E9E2DA]"
                       }`}
                     >
-                      <div className="h-28 bg-stone-50 p-4 flex items-center justify-center relative">
+                      {/* Imagen */}
+                      <div className="relative flex h-32 items-center justify-center bg-[#F8F5F1] p-5">
                         <img
                           src={resolverRutaImagen(logo.imagen)}
                           alt={logo.nombre}
-                          className="max-w-full max-h-full object-contain"
+                          className="max-h-full max-w-full object-contain"
                         />
 
                         {activo && (
-                          <span className="absolute top-2 right-2 bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-1 rounded-full text-[10px] font-semibold">
+                          <span className="absolute right-2 top-2 admin-pill admin-pill--success">
+                            <CheckCircle2 size={12} />
                             Activo
                           </span>
                         )}
                       </div>
 
-                      <div className="p-3">
-                        <h4 className="text-sm font-semibold text-neutral-800 truncate">
+                      {/* Datos y acciones */}
+                      <div className="p-3.5">
+                        <h4 className="truncate text-xs font-semibold text-[#292522]">
                           {logo.nombre}
                         </h4>
 
-                        <div className="grid grid-cols-2 gap-2 mt-3">
+                        <p className="mt-1 text-[10px] text-[#9A9087]">
+                          Registrado: {formatearFecha(logo.fechaCreacion)}
+                        </p>
+
+                        <div className="mt-3 flex flex-wrap gap-2">
                           {activo ? (
                             <button
                               type="button"
                               onClick={handleDesactivarLogo}
                               disabled={guardandoLogo}
-                              className="flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 text-xs font-semibold disabled:opacity-50 cursor-pointer"
+                              className="admin-filter-button flex-1"
                             >
                               <Power size={13} />
                               Desactivar
@@ -838,7 +1404,7 @@ const Publicidad = () => {
                               type="button"
                               onClick={() => handleActivarLogo(logo)}
                               disabled={guardandoLogo}
-                              className="flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-semibold disabled:opacity-50 cursor-pointer"
+                              className="admin-filter-button flex-1"
                             >
                               <CheckCircle2 size={13} />
                               Activar
@@ -847,12 +1413,15 @@ const Publicidad = () => {
 
                           <button
                             type="button"
-                            onClick={() => handleEliminarLogo(logo)}
+                            onClick={() =>
+                              abrirConfirmacionEliminar("logo", logo)
+                            }
                             disabled={guardandoLogo}
-                            className="flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 text-xs font-semibold disabled:opacity-50 cursor-pointer"
+                            className="admin-row-action admin-row-action--danger"
+                            title="Eliminar logotipo"
+                            aria-label={`Eliminar logotipo ${logo.nombre}`}
                           >
-                            <Trash2 size={13} />
-                            Eliminar
+                            <Trash2 size={15} />
                           </button>
                         </div>
                       </div>
@@ -862,130 +1431,230 @@ const Publicidad = () => {
               </div>
             )}
           </div>
+
         </div>
       </section>
 
       {/* =================================================
           SECCIÓN 2: PUBLICIDADES
-      ================================================== */}
+          ================================================= */}
+
       <section>
 
-        {/* Encabezado y botón de carga de publicidad */}
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-4">
+        {/* Encabezado */}
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-neutral-800">
+            <p className="admin-page-heading__eyebrow">
+              Contenido promocional
+            </p>
+
+            <h2 className="text-lg font-semibold tracking-tight text-[#292522]">
               Publicidades del sitio
             </h2>
 
-            <p className="text-xs text-neutral-500 mt-1">
+            <p className="mt-1 text-xs text-[#827970]">
               Administra las imágenes que aparecerán en el carrusel de la página principal.
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-neutral-500">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-[11px] text-[#827970]">
               {totalActivas} de {publicidades.length} activas
             </span>
 
             <button
               type="button"
               onClick={abrirNuevaPublicidad}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-medium bg-[#8a5a63] hover:bg-[#754b53] transition-colors cursor-pointer"
+              className="admin-primary-button"
             >
-              <ImagePlus size={17} />
+              <ImagePlus size={16} />
               Cargar publicidad
             </button>
           </div>
         </div>
 
         {/* Búsqueda y filtros */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-5">
-          <input
-            type="text"
-            placeholder="Buscar por nombre o descripción..."
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            className="w-full sm:max-w-sm px-4 py-2.5 bg-white border border-stone-200 rounded-xl text-sm text-neutral-800 placeholder-neutral-400 focus:outline-none focus:border-[#8a5a63] focus:ring-4 focus:ring-[#8a5a63]/10 transition"
-          />
+        <section className="admin-toolbar">
+          <div className="admin-toolbar__search">
+            <Search
+              size={16}
+              className="admin-search-icon"
+            />
 
-          <select
-            value={filtroEstado}
-            onChange={(e) => setFiltroEstado(e.target.value)}
-            className="px-4 py-2.5 bg-white border border-stone-200 rounded-xl text-sm text-neutral-700 focus:outline-none focus:border-[#8a5a63] cursor-pointer"
-          >
-            <option value="todos">Todas las publicidades</option>
-            <option value="activas">Solo activas</option>
-            <option value="inactivas">Solo inactivas</option>
-          </select>
-        </div>
+            <input
+              id="publicidad-busqueda"
+              type="text"
+              placeholder="Buscar por nombre o descripción..."
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              className="admin-field-control admin-search-input"
+              aria-label="Buscar publicidades"
+            />
+          </div>
+
+          <div className="admin-toolbar__filters">
+            <select
+              value={filtroEstado}
+              onChange={(e) => setFiltroEstado(e.target.value)}
+              className="admin-field-control"
+              style={{
+                width: "auto",
+                minWidth: "175px",
+              }}
+              aria-label="Filtrar por estado"
+            >
+              <option value="todos">
+                Todas las publicidades
+              </option>
+
+              <option value="activas">
+                Solo activas
+              </option>
+
+              <option value="inactivas">
+                Solo inactivas
+              </option>
+            </select>
+
+            {(busqueda || filtroEstado !== "todos") && (
+              <button
+                type="button"
+                onClick={() => {
+                  setBusqueda("");
+                  setFiltroEstado("todos");
+                }}
+                className="admin-clear-filter"
+              >
+                Limpiar filtros
+              </button>
+            )}
+
+            <span className="text-[11px] text-[#827970]">
+              {publicidadesFiltradas.length}{" "}
+              {publicidadesFiltradas.length === 1
+                ? "resultado"
+                : "resultados"}
+            </span>
+          </div>
+        </section>
 
         {/* Galería de publicidades */}
         {loading ? (
-          <div className="bg-white border border-stone-200 rounded-xl p-10 text-center text-sm text-neutral-500">
-            Cargando información...
+          <div className="admin-table-card">
+            <div className="admin-loading-state">
+              <div className="admin-spinner" />
+              Cargando publicidades...
+            </div>
           </div>
         ) : publicidadesFiltradas.length === 0 ? (
-          <div className="bg-white border border-stone-200 rounded-xl p-10 text-center">
-            <ImagePlus size={32} className="mx-auto text-stone-300 mb-3" />
+          <div className="admin-table-card">
+            <div className="admin-empty-state">
+              <ImagePlus
+                size={34}
+                className="mx-auto mb-3 text-[#B7A493]"
+              />
 
-            <p className="text-sm font-medium text-neutral-700">
-              {publicidades.length === 0
-                ? "Todavía no has cargado publicidades."
-                : "No se encontraron publicidades."}
-            </p>
+              <p className="admin-empty-state__title">
+                {publicidades.length === 0
+                  ? "Todavía no has cargado publicidades."
+                  : "No se encontraron publicidades."}
+              </p>
 
-            <p className="text-xs text-neutral-400 mt-1">
-              Carga una imagen para comenzar a crear tu carrusel promocional.
-            </p>
+              <p>
+                {publicidades.length === 0
+                  ? "Carga una imagen para comenzar a crear tu carrusel promocional."
+                  : "Prueba cambiando los filtros o el término de búsqueda."}
+              </p>
+
+              {publicidades.length === 0 && (
+                <button
+                  type="button"
+                  onClick={abrirNuevaPublicidad}
+                  className="admin-primary-button mt-4"
+                >
+                  <ImagePlus size={15} />
+                  Cargar primera publicidad
+                </button>
+              )}
+            </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-            {publicidadesFiltradas.map((publicidad) => {
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {publicidadesPaginadas.map((publicidad) => {
               const activa = Boolean(publicidad.estado);
 
               const ocupada =
-                actualizandoId === publicidad.id ||
-                eliminandoId === publicidad.id;
+                String(actualizandoId) === String(publicidad.id) ||
+                String(eliminandoId) === String(publicidad.id);
+
+              const hayOperacionEnCurso =
+                actualizandoId !== null ||
+                eliminandoId !== null;
 
               return (
                 <article
                   key={publicidad.id}
-                  className="bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                  className="overflow-hidden rounded-2xl border border-[#E9E2DA] bg-white shadow-[0_3px_12px_rgba(41,37,34,0.025)] transition-shadow hover:shadow-md"
                 >
-                  <div className="relative aspect-[16/9] bg-stone-100">
+                  {/* Imagen */}
+                  <div className="relative aspect-[16/9] overflow-hidden bg-[#F5F1EB]">
                     {publicidad.imagen ? (
                       <img
                         src={resolverRutaImagen(publicidad.imagen)}
                         alt={publicidad.titulo || "Publicidad"}
-                        className="w-full h-full object-cover"
+                        className="h-full w-full object-cover"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-neutral-400">
+                      <div className="flex h-full w-full items-center justify-center text-[#B7A493]">
                         <ImagePlus size={34} />
                       </div>
                     )}
 
                     <span
-                      className={`absolute top-3 right-3 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${
+                      className={`absolute right-3 top-3 admin-pill ${
                         activa
-                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                          : "bg-white/95 text-neutral-600 border-stone-200"
+                          ? "admin-pill--success"
+                          : "admin-pill--neutral"
                       }`}
                     >
+                      {activa ? (
+                        <CheckCircle2 size={12} />
+                      ) : (
+                        <Power size={12} />
+                      )}
+
                       {activa ? "Activa" : "Inactiva"}
                     </span>
                   </div>
 
+                  {/* Información */}
                   <div className="p-4">
-                    <h3 className="text-sm font-semibold text-neutral-800 truncate">
-                      {publicidad.titulo || "Publicidad sin nombre"}
-                    </h3>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <h3 className="truncate text-sm font-semibold text-[#292522]">
+                          {publicidad.titulo || "Publicidad sin nombre"}
+                        </h3>
 
-                    <p className="text-xs text-neutral-500 mt-1 line-clamp-2 min-h-8">
-                      {publicidad.descripcion || "Sin descripción"}
+                        <p className="mt-1 text-[10px] text-[#9A9087]">
+                          Registrada: {formatearFecha(publicidad.fechaCreacion)}
+                        </p>
+                      </div>
+
+                      <span
+                        className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${
+                          activa ? "bg-[#47775B]" : "bg-[#B7A493]"
+                        }`}
+                        title={activa ? "Publicidad activa" : "Publicidad inactiva"}
+                      />
+                    </div>
+
+                    <p className="mt-3 min-h-[38px] text-xs leading-relaxed text-[#827970]">
+                      {publicidad.descripcion || "Sin descripción adicional."}
                     </p>
 
-                    <div className="grid grid-cols-3 gap-2 mt-4">
+                    {/* Acciones */}
+                    <div className="mt-4 grid grid-cols-3 gap-2 border-t border-[#F0EBE5] pt-3">
+
                       <button
                         type="button"
                         onClick={() =>
@@ -993,17 +1662,24 @@ const Publicidad = () => {
                         }
                         disabled={
                           ocupada ||
-                          actualizandoId !== null ||
-                          eliminandoId !== null
+                          hayOperacionEnCurso
                         }
-                        className={`col-span-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+                        className={`flex min-h-9 items-center justify-center gap-1 rounded-lg px-2 text-[10px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
                           activa
-                            ? "bg-amber-50 text-amber-700 hover:bg-amber-100"
-                            : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                            ? "bg-[#FAF3E7] text-[#906A2E] hover:bg-[#F3E8D3]"
+                            : "bg-[#EDF5EF] text-[#47775B] hover:bg-[#DDEEE1]"
                         }`}
                       >
-                        <Power size={14} />
-                        {actualizandoId === publicidad.id
+                        {actualizandoId !== null && ocupada ? (
+                          <LoaderCircle
+                            size={13}
+                            className="animate-spin"
+                          />
+                        ) : (
+                          <Power size={13} />
+                        )}
+
+                        {actualizandoId !== null && ocupada
                           ? "..."
                           : activa
                             ? "Desactivar"
@@ -1012,31 +1688,31 @@ const Publicidad = () => {
 
                       <button
                         type="button"
-                        onClick={() => abrirEditarPublicidad(publicidad)}
-                        disabled={
-                          ocupada ||
-                          actualizandoId !== null ||
-                          eliminandoId !== null
+                        onClick={() =>
+                          abrirEditarPublicidad(publicidad)
                         }
-                        className="flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-semibold text-[#8a5a63] bg-[#8a5a63]/10 hover:bg-[#8a5a63]/15 transition-colors cursor-pointer disabled:opacity-50"
+                        disabled={hayOperacionEnCurso}
+                        className="flex min-h-9 items-center justify-center gap-1 rounded-lg bg-[#F8F0F1] px-2 text-[10px] font-semibold text-[#702D40] transition-colors hover:bg-[#F0E1E4] disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        <Pencil size={14} />
+                        <Pencil size={13} />
                         Editar
                       </button>
 
                       <button
                         type="button"
-                        onClick={() => handleEliminarPublicidad(publicidad)}
-                        disabled={
-                          ocupada ||
-                          actualizandoId !== null ||
-                          eliminandoId !== null
+                        onClick={() =>
+                          abrirConfirmacionEliminar(
+                            "publicidad",
+                            publicidad
+                          )
                         }
-                        className="flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 transition-colors cursor-pointer disabled:opacity-50"
+                        disabled={hayOperacionEnCurso}
+                        className="flex min-h-9 items-center justify-center gap-1 rounded-lg bg-[#FCF1F1] px-2 text-[10px] font-semibold text-[#923E45] transition-colors hover:bg-[#F6E2E3] disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        <Trash2 size={14} />
+                        <Trash2 size={13} />
                         Eliminar
                       </button>
+
                     </div>
                   </div>
                 </article>
@@ -1044,154 +1720,493 @@ const Publicidad = () => {
             })}
           </div>
         )}
+
+        {/* Paginación */}
+        {!loading && publicidadesFiltradas.length > 0 && (
+          <AdminPagination
+            currentPage={paginaActualSegura}
+            totalItems={publicidadesFiltradas.length}
+            pageSize={registrosPorPagina}
+            onPageChange={setPaginaActual}
+            onPageSizeChange={(cantidad) => {
+              setRegistrosPorPagina(cantidad);
+              setPaginaActual(1);
+            }}
+          />
+        )}
       </section>
 
       {/* =================================================
-          MODAL DE PUBLICIDAD
-      ================================================== */}
+          MODAL DE REGISTRO Y EDICIÓN DE PUBLICIDAD
+          ================================================= */}
+
       {modalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/45 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl border border-stone-200 w-full max-w-xl max-h-[92vh] overflow-y-auto">
+        <div
+          className="admin-modal-overlay"
+          onClick={(e) => {
+            if (
+              e.target === e.currentTarget &&
+              !guardandoPublicidad &&
+              !procesandoImagenPublicidad
+            ) {
+              cerrarModalPublicidad();
+            }
+          }}
+        >
+          <section
+            className="admin-modal-card admin-modal-card--wide"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="publicidad-modal-title"
+          >
 
-            <div className="flex items-center justify-between px-6 py-4 border-b border-stone-100">
+            {/* Encabezado */}
+            <header className="admin-modal-header">
               <div>
-                <h2 className="text-lg font-semibold text-neutral-900">
-                  {editando ? "Editar publicidad" : "Cargar publicidad"}
-                </h2>
-
-                <p className="text-xs text-neutral-500 mt-1">
-                  Selecciona la imagen y completa la información del anuncio.
+                <p className="admin-modal-header__eyebrow">
+                  Contenido promocional
                 </p>
+
+                <h2
+                  id="publicidad-modal-title"
+                  className="admin-modal-header__title"
+                >
+                  {editando
+                    ? "Editar publicidad"
+                    : "Registrar publicidad"}
+                </h2>
               </div>
 
               <button
                 type="button"
                 onClick={cerrarModalPublicidad}
-                disabled={guardandoPublicidad}
-                aria-label="Cerrar"
-                className="w-9 h-9 rounded-lg flex items-center justify-center text-neutral-500 hover:bg-stone-100 transition-colors cursor-pointer disabled:opacity-50"
+                disabled={
+                  guardandoPublicidad ||
+                  procesandoImagenPublicidad
+                }
+                className="admin-modal-close"
+                aria-label="Cerrar modal"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
-            </div>
+            </header>
 
-            <form onSubmit={handleGuardarPublicidad} className="p-6 space-y-4">
+            <form onSubmit={handleGuardarPublicidad}>
+              <div className="admin-modal-body">
 
-              <div>
-                <label className="block text-xs font-semibold text-neutral-700 mb-1.5">
-                  Nombre de la publicidad
-                </label>
-
-                <input
-                  name="titulo"
-                  value={form.titulo}
-                  onChange={handleChangePublicidad}
-                  required
-                  maxLength={100}
-                  placeholder="Ej. Nueva colección de verano"
-                  className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm focus:outline-none focus:border-[#8a5a63] focus:ring-2 focus:ring-[#8a5a63]/10"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-neutral-700 mb-1.5">
-                  Descripción (opcional)
-                </label>
-
-                <textarea
-                  name="descripcion"
-                  value={form.descripcion}
-                  onChange={handleChangePublicidad}
-                  rows="3"
-                  maxLength={300}
-                  placeholder="Información adicional sobre esta publicidad..."
-                  className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm resize-none focus:outline-none focus:border-[#8a5a63] focus:ring-2 focus:ring-[#8a5a63]/10"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-neutral-700 mb-2">
-                  Imagen promocional
-                </label>
-
-                {imagenPreview ? (
-                  <div className="relative rounded-xl overflow-hidden border border-stone-200 bg-stone-50">
-                    <img
-                      src={resolverRutaImagen(imagenPreview)}
-                      alt="Vista previa de la publicidad"
-                      className="w-full aspect-[16/9] object-cover"
+                {errorFormulario && (
+                  <div
+                    className="admin-alert admin-alert--error"
+                    role="alert"
+                  >
+                    <AlertTriangle
+                      size={17}
+                      className="shrink-0"
                     />
 
-                    <label className="absolute bottom-3 right-3 inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white/95 text-neutral-800 text-xs font-semibold shadow cursor-pointer hover:bg-white transition-colors">
-                      <Upload size={14} />
-                      Cambiar imagen
-
-                      <input
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp"
-                        onChange={handleSeleccionarImagenPublicidad}
-                        className="hidden"
-                      />
-                    </label>
+                    <span>{errorFormulario}</span>
                   </div>
-                ) : (
-                  <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-stone-300 rounded-xl p-8 bg-stone-50 hover:bg-stone-100 transition-colors cursor-pointer">
-                    <ImagePlus size={34} className="text-[#8a5a63]" />
+                )}
 
-                    <span className="text-sm font-semibold text-neutral-700">
-                      Seleccionar imagen
-                    </span>
+                <div className="admin-form-grid">
 
-                    <span className="text-xs text-neutral-400">
-                      JPG, PNG o WEBP. Máximo 5 MB.
-                    </span>
+                  {/* Nombre */}
+                  <div className="admin-form-field admin-form-field--full">
+                    <label
+                      htmlFor="publicidad-titulo"
+                      className="admin-form-label"
+                    >
+                      Nombre de la publicidad
+                    </label>
 
                     <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      onChange={handleSeleccionarImagenPublicidad}
-                      className="hidden"
+                      id="publicidad-titulo"
+                      name="titulo"
+                      value={form.titulo}
+                      onChange={handleChangePublicidad}
+                      required
+                      maxLength={100}
+                      placeholder="Ej. Nueva colección de verano"
+                      className="admin-field-control"
+                      disabled={guardandoPublicidad}
                     />
-                  </label>
-                )}
+                  </div>
+
+                  {/* Descripción */}
+                  <div className="admin-form-field admin-form-field--full">
+                    <label
+                      htmlFor="publicidad-descripcion"
+                      className="admin-form-label"
+                    >
+                      Descripción
+                      <span className="ml-1 font-normal text-[#9A9087]">
+                        (opcional)
+                      </span>
+                    </label>
+
+                    <textarea
+                      id="publicidad-descripcion"
+                      name="descripcion"
+                      value={form.descripcion}
+                      onChange={handleChangePublicidad}
+                      rows={3}
+                      maxLength={300}
+                      placeholder="Información adicional sobre esta publicidad..."
+                      className="admin-field-control resize-none"
+                      disabled={guardandoPublicidad}
+                    />
+
+                    <p className="admin-form-help text-right">
+                      {form.descripcion.length}/300 caracteres
+                    </p>
+                  </div>
+
+                  {/* Imagen */}
+                  <div className="admin-form-field admin-form-field--full">
+                    <label className="admin-form-label">
+                      Imagen promocional
+                    </label>
+
+                    {imagenPreview ? (
+                      <div className="relative overflow-hidden rounded-xl border border-[#E9E2DA] bg-[#F8F5F1]">
+                        <img
+                          src={resolverRutaImagen(imagenPreview)}
+                          alt="Vista previa de la publicidad"
+                          className="aspect-[16/9] max-h-[320px] w-full object-contain"
+                        />
+
+                        <label
+                          className={`absolute bottom-3 right-3 inline-flex cursor-pointer items-center gap-2 rounded-lg border border-[#E9E2DA] bg-white/95 px-3 py-2 text-xs font-semibold text-[#39332E] shadow-sm transition-colors hover:bg-white ${
+                            procesandoImagenPublicidad
+                              ? "pointer-events-none opacity-60"
+                              : ""
+                          }`}
+                        >
+                          {procesandoImagenPublicidad ? (
+                            <LoaderCircle
+                              size={14}
+                              className="animate-spin"
+                            />
+                          ) : (
+                            <Upload size={14} />
+                          )}
+
+                          {procesandoImagenPublicidad
+                            ? "Procesando..."
+                            : "Cambiar imagen"}
+
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            onChange={handleSeleccionarImagenPublicidad}
+                            disabled={
+                              guardandoPublicidad ||
+                              procesandoImagenPublicidad
+                            }
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+                    ) : (
+                      <label
+                        className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#D9D0C6] bg-[#FAF8F5] p-8 text-center transition-colors hover:bg-[#F5F1EB] ${
+                          procesandoImagenPublicidad
+                            ? "pointer-events-none opacity-60"
+                            : ""
+                        }`}
+                      >
+                        {procesandoImagenPublicidad ? (
+                          <LoaderCircle
+                            size={32}
+                            className="animate-spin text-[#702D40]"
+                          />
+                        ) : (
+                          <ImagePlus
+                            size={34}
+                            className="text-[#702D40]"
+                          />
+                        )}
+
+                        <span className="text-sm font-semibold text-[#39332E]">
+                          {procesandoImagenPublicidad
+                            ? "Procesando imagen..."
+                            : "Seleccionar imagen"}
+                        </span>
+
+                        <span className="text-xs text-[#9A9087]">
+                          JPG, PNG o WEBP. Tamaño máximo de 5 MB.
+                        </span>
+
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          onChange={handleSeleccionarImagenPublicidad}
+                          disabled={
+                            guardandoPublicidad ||
+                            procesandoImagenPublicidad
+                          }
+                          className="hidden"
+                        />
+                      </label>
+                    )}
+
+                    <p className="admin-form-help">
+                      La imagen se optimizará automáticamente antes de guardarse.
+                      Se recomienda utilizar una proporción horizontal de 16:9.
+                    </p>
+                  </div>
+
+                </div>
+
+                {/* Estado de la publicidad */}
+                <div className="mt-5 flex items-start gap-3 rounded-xl border border-[#E9E2DA] bg-[#F8F5F1] p-3.5">
+                  <Power
+                    size={16}
+                    className="mt-0.5 shrink-0 text-[#827970]"
+                  />
+
+                  <div>
+                    <p className="text-xs font-semibold text-[#39332E]">
+                      Estado de publicación
+                    </p>
+
+                    <p className="mt-1 text-[11px] leading-relaxed text-[#827970]">
+                      {editando
+                        ? `Estado actual: ${editando.estado ? "Activa" : "Inactiva"}. Se conservará al guardar.`
+                        : "La nueva publicidad se guardará inactiva. Podrás activarla desde su tarjeta cuando lo necesites."}
+                    </p>
+                  </div>
+                </div>
+
               </div>
 
-              {errorFormulario && (
-                <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-lg p-3">
-                  {errorFormulario}
+              {/* Acciones */}
+              <div className="admin-modal-body pt-0">
+                <div className="admin-modal-actions">
+                  <button
+                    type="button"
+                    onClick={cerrarModalPublicidad}
+                    disabled={
+                      guardandoPublicidad ||
+                      procesandoImagenPublicidad
+                    }
+                    className="admin-secondary-button"
+                  >
+                    Cancelar
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={
+                      guardandoPublicidad ||
+                      procesandoImagenPublicidad
+                    }
+                    className="admin-primary-button"
+                  >
+                    {guardandoPublicidad ? (
+                      <>
+                        <LoaderCircle
+                          size={16}
+                          className="animate-spin"
+                        />
+                        Guardando...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 size={16} />
+
+                        {editando
+                          ? "Guardar cambios"
+                          : "Registrar publicidad"}
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </form>
+
+          </section>
+        </div>
+      )}
+
+      {/* =================================================
+          MODAL DE CONFIRMACIÓN DE ELIMINACIÓN
+          ================================================= */}
+
+      {confirmacionEliminar && (
+        <div
+          className="admin-modal-overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              cerrarConfirmacionEliminar();
+            }
+          }}
+        >
+          <section
+            className="admin-modal-card admin-modal-card--small"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="publicidad-eliminar-title"
+          >
+
+            <header className="admin-modal-header">
+              <div>
+                <p className="admin-modal-header__eyebrow">
+                  Confirmación
+                </p>
+
+                <h2
+                  id="publicidad-eliminar-title"
+                  className="admin-modal-header__title"
+                >
+                  Eliminar{" "}
+                  {confirmacionEliminar.tipo === "logo"
+                    ? "logotipo"
+                    : "publicidad"}
+                </h2>
+              </div>
+
+              <button
+                type="button"
+                onClick={cerrarConfirmacionEliminar}
+                disabled={confirmacionEnProceso}
+                className="admin-modal-close"
+                aria-label="Cerrar modal"
+              >
+                <X size={18} />
+              </button>
+            </header>
+
+            <div className="admin-modal-body">
+
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#FCF1F1] text-[#923E45]">
+                  <AlertTriangle size={19} />
+                </div>
+
+                <div>
+                  <p className="text-sm font-semibold text-[#292522]">
+                    ¿Estás seguro de eliminar este elemento?
+                  </p>
+
+                  <p className="mt-1 text-xs leading-relaxed text-[#827970]">
+                    Esta acción no se puede deshacer.
+                    {confirmacionEliminar.tipo === "logo" &&
+                    String(configuracion.logoActivoId) ===
+                      String(confirmacionEliminar.elemento.id)
+                      ? " Al eliminar el logotipo activo se mostrará nuevamente la identidad predeterminada."
+                      : ""}
+                  </p>
+                </div>
+              </div>
+
+              <div className="admin-delete-preview">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#F5F1EB] text-[#702D40]">
+                  {confirmacionEliminar.tipo === "logo" ? (
+                    <Store size={18} />
+                  ) : (
+                    <Image size={18} />
+                  )}
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-[#292522]">
+                    {confirmacionEliminar.elemento.nombre ||
+                      confirmacionEliminar.elemento.titulo ||
+                      "Elemento seleccionado"}
+                  </p>
+
+                  <p className="mt-1 text-[10px] text-[#827970]">
+                    {confirmacionEliminar.tipo === "logo"
+                      ? "Logotipo almacenado"
+                      : confirmacionEliminar.elemento.estado
+                        ? "Publicidad activa"
+                        : "Publicidad inactiva"}
+                  </p>
+                </div>
+              </div>
+
+              {errorConfirmacion && (
+                <div
+                  className="admin-alert admin-alert--error mt-4"
+                  role="alert"
+                >
+                  <AlertTriangle
+                    size={16}
+                    className="shrink-0"
+                  />
+
+                  <span>{errorConfirmacion}</span>
                 </div>
               )}
 
-              <div className="flex items-center gap-2 text-xs text-neutral-500 bg-stone-50 border border-stone-200 rounded-lg p-3">
-                <Power size={15} />
-
-                {editando
-                  ? `Estado actual: ${editando.estado ? "Activa" : "Inactiva"}. Se conservará al guardar.`
-                  : "La nueva publicidad se guardará inactiva. Podrás activarla desde su tarjeta."}
-              </div>
-
-              <div className="flex justify-end gap-3 pt-2">
+              <div className="admin-modal-actions">
                 <button
                   type="button"
-                  onClick={cerrarModalPublicidad}
-                  disabled={guardandoPublicidad}
-                  className="px-4 py-2 rounded-lg text-sm text-neutral-600 hover:bg-stone-100 disabled:opacity-50 cursor-pointer"
+                  onClick={cerrarConfirmacionEliminar}
+                  disabled={confirmacionEnProceso}
+                  className="admin-secondary-button"
                 >
                   Cancelar
                 </button>
 
                 <button
-                  type="submit"
-                  disabled={guardandoPublicidad}
-                  className="px-4 py-2 rounded-lg text-sm text-white bg-[#8a5a63] hover:bg-[#754b53] disabled:opacity-60 cursor-pointer"
+                  type="button"
+                  onClick={confirmarEliminar}
+                  disabled={confirmacionEnProceso}
+                  className="admin-danger-button"
                 >
-                  {guardandoPublicidad ? "Guardando..." : "Guardar publicidad"}
+                  {confirmacionEnProceso ? (
+                    <>
+                      <LoaderCircle
+                        size={15}
+                        className="animate-spin"
+                      />
+                      Eliminando...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 size={15} />
+                      Confirmar eliminación
+                    </>
+                  )}
                 </button>
               </div>
-            </form>
-          </div>
+
+            </div>
+          </section>
         </div>
       )}
+
+      {/* =================================================
+          NOTIFICACIÓN
+          ================================================= */}
+
+      {toast && (
+        <div
+          key={toast.id}
+          className="admin-toast"
+          role="status"
+        >
+          <div className="admin-toast__icon">
+            <CheckCircle2 size={17} />
+          </div>
+
+          <p className="admin-toast__message">
+            {toast.mensaje}
+          </p>
+
+          <button
+            type="button"
+            onClick={() => setToast(null)}
+            className="admin-toast__close"
+            aria-label="Cerrar notificación"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
     </div>
   );
 };
