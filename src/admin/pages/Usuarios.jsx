@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import {
   AlertTriangle,
@@ -32,7 +33,6 @@ const initialForm = {
   nombre: "",
   email: "",
   password: "",
-  modulos: [],
 };
 
 const esUsuarioAdmin = (usuario) => {
@@ -80,13 +80,20 @@ const Usuarios = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Formulario.
+  // Modal de registro y edición de datos.
   const [modalOpen, setModalOpen] = useState(false);
   const [editando, setEditando] = useState(null);
   const [form, setForm] = useState(initialForm);
   const [guardando, setGuardando] = useState(false);
   const [errorModal, setErrorModal] = useState("");
   const [mostrarPassword, setMostrarPassword] = useState(false);
+
+  // Modal independiente de permisos.
+  const [permisosOpen, setPermisosOpen] = useState(false);
+  const [usuarioPermisos, setUsuarioPermisos] = useState(null);
+  const [modulosSeleccionados, setModulosSeleccionados] = useState([]);
+  const [guardandoPermisos, setGuardandoPermisos] = useState(false);
+  const [errorPermisos, setErrorPermisos] = useState("");
 
   // Búsqueda y paginación.
   const [busqueda, setBusqueda] = useState("");
@@ -147,22 +154,18 @@ const Usuarios = () => {
   };
 
   /* =====================================================
-     FORMULARIO
+     REGISTRO Y EDICIÓN DE DATOS
      ===================================================== */
 
   const abrirNuevo = () => {
     setEditando(null);
-    setForm({
-      ...initialForm,
-      modulos: [],
-    });
+    setForm(initialForm);
     setErrorModal("");
     setMostrarPassword(false);
     setModalOpen(true);
   };
 
   const abrirEditar = (usuario) => {
-    // La cuenta administradora está protegida.
     if (esUsuarioAdmin(usuario)) {
       mostrarNotificacion(
         "La cuenta administradora principal no se puede modificar."
@@ -176,7 +179,6 @@ const Usuarios = () => {
       nombre: usuario.nombre || "",
       email: usuario.email || "",
       password: "",
-      modulos: normalizarModulos(usuario.modulos),
     });
 
     setErrorModal("");
@@ -203,39 +205,6 @@ const Usuarios = () => {
     }));
   };
 
-  const alternarModulo = (moduloId) => {
-    setForm((prev) => {
-      const yaSeleccionado = prev.modulos.includes(moduloId);
-
-      const nuevosModulos = yaSeleccionado
-        ? prev.modulos.filter((id) => id !== moduloId)
-        : [...prev.modulos, moduloId];
-
-      return {
-        ...prev,
-        modulos: normalizarModulos(nuevosModulos),
-      };
-    });
-  };
-
-  const seleccionarTodosLosModulos = () => {
-    setForm((prev) => ({
-      ...prev,
-      modulos: MODULOS_DISPONIBLES.map((modulo) => modulo.id),
-    }));
-  };
-
-  const limpiarModulos = () => {
-    setForm((prev) => ({
-      ...prev,
-      modulos: [],
-    }));
-  };
-
-  /* =====================================================
-     REGISTRO Y ACTUALIZACIÓN
-     ===================================================== */
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorModal("");
@@ -243,7 +212,6 @@ const Usuarios = () => {
     const nombre = form.nombre.trim();
     const email = form.email.trim();
     const passwordNueva = form.password.trim();
-    const modulos = normalizarModulos(form.modulos);
 
     if (!nombre || !email) {
       setErrorModal(
@@ -275,7 +243,6 @@ const Usuarios = () => {
           return;
         }
 
-        // Protección adicional para la cuenta administradora.
         if (esUsuarioAdmin(usuarioOriginal)) {
           setErrorModal(
             "La cuenta administradora principal no se puede modificar."
@@ -300,12 +267,9 @@ const Usuarios = () => {
           nombre,
           email,
           password: passwordFinal,
-
-          // Un empleado nunca puede convertirse en administrador.
           rol: "empleado",
-
-          // Módulos autorizados para esta cuenta.
-          modulos,
+          // Se conservan los módulos que ya tenía asignados.
+          modulos: normalizarModulos(usuarioOriginal.modulos),
         };
 
         await usuariosService.actualizarUsuario(
@@ -322,16 +286,17 @@ const Usuarios = () => {
         );
 
         mostrarNotificacion(
-          "Los datos y permisos del empleado se actualizaron correctamente."
+          "Los datos del empleado se actualizaron correctamente."
         );
       } else {
-        // Todos los usuarios nuevos se crean como empleados.
+        // Las cuentas nuevas siempre se crean como empleados.
+        // Los permisos se asignan posteriormente desde su acción.
         const nuevoUsuario = await usuariosService.crearUsuario({
           nombre,
           email,
           password: passwordNueva,
           rol: "empleado",
-          modulos,
+          modulos: [],
         });
 
         setUsuarios((prev) => [
@@ -362,6 +327,110 @@ const Usuarios = () => {
   };
 
   /* =====================================================
+     GESTIÓN INDEPENDIENTE DE PERMISOS
+     ===================================================== */
+
+  const abrirPermisos = (usuario) => {
+    if (esUsuarioAdmin(usuario)) {
+      mostrarNotificacion(
+        "No se pueden modificar los permisos del administrador."
+      );
+      return;
+    }
+
+    setUsuarioPermisos(usuario);
+
+    setModulosSeleccionados(
+      normalizarModulos(usuario.modulos)
+    );
+
+    setErrorPermisos("");
+    setPermisosOpen(true);
+  };
+
+  const cerrarPermisos = () => {
+    if (guardandoPermisos) return;
+
+    setPermisosOpen(false);
+    setUsuarioPermisos(null);
+    setModulosSeleccionados([]);
+    setErrorPermisos("");
+  };
+
+  const alternarModuloPermiso = (moduloId) => {
+    setModulosSeleccionados((prev) => {
+      const seleccionado = prev.includes(moduloId);
+
+      const nuevosModulos = seleccionado
+        ? prev.filter((id) => id !== moduloId)
+        : [...prev, moduloId];
+
+      return normalizarModulos(nuevosModulos);
+    });
+  };
+
+  const seleccionarTodosLosPermisos = () => {
+    setModulosSeleccionados(
+      MODULOS_DISPONIBLES.map((modulo) => modulo.id)
+    );
+  };
+
+  const limpiarPermisos = () => {
+    setModulosSeleccionados([]);
+  };
+
+  const guardarPermisos = async () => {
+    if (!usuarioPermisos) return;
+
+    if (esUsuarioAdmin(usuarioPermisos)) {
+      setErrorPermisos(
+        "No se pueden modificar los permisos del administrador."
+      );
+      return;
+    }
+
+    setGuardandoPermisos(true);
+    setErrorPermisos("");
+
+    try {
+      const usuarioActualizado = {
+        ...usuarioPermisos,
+        rol: "empleado",
+        modulos: normalizarModulos(modulosSeleccionados),
+      };
+
+      await usuariosService.actualizarUsuario(
+        usuarioPermisos.id,
+        usuarioActualizado
+      );
+
+      setUsuarios((prev) =>
+        prev.map((usuario) =>
+          String(usuario.id) === String(usuarioPermisos.id)
+            ? usuarioActualizado
+            : usuario
+        )
+      );
+
+      setPermisosOpen(false);
+      setUsuarioPermisos(null);
+      setModulosSeleccionados([]);
+
+      mostrarNotificacion(
+        "Los permisos del empleado se actualizaron correctamente."
+      );
+    } catch (err) {
+      console.error("Error al actualizar permisos:", err);
+
+      setErrorPermisos(
+        "No se pudieron guardar los permisos. Intenta nuevamente."
+      );
+    } finally {
+      setGuardandoPermisos(false);
+    }
+  };
+
+  /* =====================================================
      ELIMINACIÓN
      ===================================================== */
 
@@ -387,7 +456,7 @@ const Usuarios = () => {
   const confirmarEliminar = async () => {
     if (!usuarioAEliminar) return;
 
-    // Protección adicional para impedir la eliminación del administrador.
+    // Protección adicional de la cuenta administradora.
     if (esUsuarioAdmin(usuarioAEliminar)) {
       setErrorEliminar(
         "No está permitido eliminar la cuenta administradora principal."
@@ -819,16 +888,29 @@ const Usuarios = () => {
                             </span>
                           ) : (
                             <>
+                              {/* Editar datos personales */}
                               <button
                                 type="button"
                                 onClick={() => abrirEditar(usuario)}
                                 className="admin-row-action"
-                                title="Editar empleado y permisos"
+                                title="Editar datos del empleado"
                                 aria-label={`Editar usuario ${usuario.nombre}`}
                               >
                                 <Pencil size={15} />
                               </button>
 
+                              {/* Administrar permisos */}
+                              <button
+                                type="button"
+                                onClick={() => abrirPermisos(usuario)}
+                                className="admin-row-action"
+                                title="Administrar permisos"
+                                aria-label={`Administrar permisos de ${usuario.nombre}`}
+                              >
+                                <ShieldCheck size={16} />
+                              </button>
+
+                              {/* Eliminar empleado */}
                               <button
                                 type="button"
                                 onClick={() =>
@@ -870,7 +952,7 @@ const Usuarios = () => {
       )}
 
       {/* =================================================
-          MODAL DE REGISTRO Y EDICIÓN
+          MODAL DE REGISTRO Y EDICIÓN DE DATOS
           ================================================= */}
 
       {modalOpen && (
@@ -889,7 +971,6 @@ const Usuarios = () => {
             aria-labelledby="usuario-modal-title"
           >
 
-            {/* Encabezado */}
             <header className="admin-modal-header">
               <div>
                 <p className="admin-modal-header__eyebrow">
@@ -1044,68 +1125,9 @@ const Usuarios = () => {
                     </p>
                   </div>
 
-                  {/* Módulos */}
-                  <div className="admin-form-field admin-form-field--full">
-                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                      <label className="admin-form-label mb-0">
-                        Módulos permitidos
-                      </label>
-
-                      <div className="flex gap-3">
-                        <button
-                          type="button"
-                          onClick={seleccionarTodosLosModulos}
-                          className="text-[10px] font-semibold text-[#702D40] hover:underline"
-                        >
-                          Seleccionar todos
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={limpiarModulos}
-                          className="text-[10px] font-semibold text-[#827970] hover:underline"
-                        >
-                          Limpiar
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="admin-checkbox-panel space-y-3">
-                      {MODULOS_DISPONIBLES.map((modulo) => (
-                        <label
-                          key={modulo.id}
-                          className="flex cursor-pointer items-start gap-3"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={form.modulos.includes(modulo.id)}
-                            onChange={() => alternarModulo(modulo.id)}
-                            className="mt-1 h-4 w-4 shrink-0 accent-[#702D40]"
-                          />
-
-                          <span className="min-w-0">
-                            <span className="block text-xs font-semibold text-[#39332E]">
-                              {modulo.nombre}
-                            </span>
-
-                            <span className="mt-0.5 block text-[10px] leading-relaxed text-[#827970]">
-                              {modulo.descripcion}
-                            </span>
-                          </span>
-                        </label>
-                      ))}
-                    </div>
-
-                    <p className="admin-form-help">
-                      El empleado solo podrá ingresar a los módulos seleccionados.
-                      Si no seleccionas ninguno, no tendrá acceso al panel.
-                    </p>
-                  </div>
-
                 </div>
               </div>
 
-              {/* Acciones */}
               <div className="admin-modal-body pt-0">
                 <div className="admin-modal-actions">
                   <button
@@ -1128,13 +1150,11 @@ const Usuarios = () => {
                           size={16}
                           className="animate-spin"
                         />
-
                         Guardando...
                       </>
                     ) : (
                       <>
                         <CheckCircle2 size={16} />
-
                         {editando !== null
                           ? "Guardar cambios"
                           : "Registrar empleado"}
@@ -1144,6 +1164,198 @@ const Usuarios = () => {
                 </div>
               </div>
             </form>
+          </section>
+        </div>
+      )}
+
+      {/* =================================================
+          MODAL INDEPENDIENTE DE PERMISOS
+          ================================================= */}
+
+      {permisosOpen && usuarioPermisos && (
+        <div
+          className="admin-modal-overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              cerrarPermisos();
+            }
+          }}
+        >
+          <section
+            className="admin-modal-card admin-modal-card--small"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="permisos-modal-title"
+          >
+
+            <header className="admin-modal-header">
+              <div>
+                <p className="admin-modal-header__eyebrow">
+                  Control de acceso
+                </p>
+
+                <h2
+                  id="permisos-modal-title"
+                  className="admin-modal-header__title"
+                >
+                  Permisos del empleado
+                </h2>
+              </div>
+
+              <button
+                type="button"
+                onClick={cerrarPermisos}
+                disabled={guardandoPermisos}
+                className="admin-modal-close"
+                aria-label="Cerrar modal"
+              >
+                <X size={18} />
+              </button>
+            </header>
+
+            <div className="admin-modal-body">
+
+              {/* Empleado seleccionado */}
+              <div className="admin-delete-preview mb-5">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#F2E7E9] text-[12px] font-semibold text-[#702D40]">
+                  {obtenerIniciales(usuarioPermisos.nombre)}
+                </div>
+
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-[#292522]">
+                    {usuarioPermisos.nombre}
+                  </p>
+
+                  <p className="mt-1 break-all text-[11px] text-[#827970]">
+                    {usuarioPermisos.email}
+                  </p>
+
+                  <span className="admin-pill admin-pill--neutral mt-2">
+                    Empleado
+                  </span>
+                </div>
+              </div>
+
+              {errorPermisos && (
+                <div
+                  className="admin-alert admin-alert--error"
+                  role="alert"
+                >
+                  <AlertTriangle
+                    size={17}
+                    className="shrink-0"
+                  />
+
+                  <span>{errorPermisos}</span>
+                </div>
+              )}
+
+              {/* Selección de módulos */}
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="admin-form-label mb-0">
+                    Módulos permitidos
+                  </p>
+
+                  <p className="admin-form-help">
+                    Selecciona las secciones a las que podrá acceder.
+                  </p>
+                </div>
+
+                <span className="admin-pill admin-pill--promo">
+                  {modulosSeleccionados.length} de {MODULOS_DISPONIBLES.length}
+                </span>
+              </div>
+
+              <div className="admin-checkbox-panel space-y-3">
+                {MODULOS_DISPONIBLES.map((modulo) => (
+                  <label
+                    key={modulo.id}
+                    className="flex cursor-pointer items-start gap-3"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={modulosSeleccionados.includes(modulo.id)}
+                      onChange={() => alternarModuloPermiso(modulo.id)}
+                      disabled={guardandoPermisos}
+                      className="mt-1 h-4 w-4 shrink-0 accent-[#702D40]"
+                    />
+
+                    <span className="min-w-0">
+                      <span className="block text-xs font-semibold text-[#39332E]">
+                        {modulo.nombre}
+                      </span>
+
+                      <span className="mt-0.5 block text-[10px] leading-relaxed text-[#827970]">
+                        {modulo.descripcion}
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+
+              {/* Acciones rápidas */}
+              <div className="mt-3 flex flex-wrap gap-4">
+                <button
+                  type="button"
+                  onClick={seleccionarTodosLosPermisos}
+                  disabled={guardandoPermisos}
+                  className="text-[11px] font-semibold text-[#702D40] hover:underline"
+                >
+                  Seleccionar todos
+                </button>
+
+                <button
+                  type="button"
+                  onClick={limpiarPermisos}
+                  disabled={guardandoPermisos}
+                  className="text-[11px] font-semibold text-[#827970] hover:underline"
+                >
+                  Quitar todos
+                </button>
+              </div>
+
+              <p className="admin-form-help mt-3">
+                Los cambios se aplicarán cuando guardes los permisos.
+                Si no seleccionas ningún módulo, el empleado no podrá
+                acceder a las secciones administrativas.
+              </p>
+
+              {/* Acciones */}
+              <div className="admin-modal-actions">
+                <button
+                  type="button"
+                  onClick={cerrarPermisos}
+                  disabled={guardandoPermisos}
+                  className="admin-secondary-button"
+                >
+                  Cancelar
+                </button>
+
+                <button
+                  type="button"
+                  onClick={guardarPermisos}
+                  disabled={guardandoPermisos}
+                  className="admin-primary-button"
+                >
+                  {guardandoPermisos ? (
+                    <>
+                      <LoaderCircle
+                        size={16}
+                        className="animate-spin"
+                      />
+                      Guardando...
+                    </>
+                  ) : (
+                    <>
+                      <ShieldCheck size={16} />
+                      Guardar permisos
+                    </>
+                  )}
+                </button>
+              </div>
+
+            </div>
           </section>
         </div>
       )}
@@ -1268,7 +1480,6 @@ const Usuarios = () => {
                         size={15}
                         className="animate-spin"
                       />
-
                       Eliminando...
                     </>
                   ) : (
