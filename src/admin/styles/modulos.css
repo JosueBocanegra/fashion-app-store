@@ -982,3 +982,163 @@ button.admin-stat-card:hover {
 }
 
 
+/* =========================================================
+   CORRECCIÓN DEL CAMPO DE BÚSQUEDA DE VENTAS
+   ========================================================= */
+
+.admin-search-field {
+  position: relative;
+  width: 100%;
+}
+
+.admin-search-field .admin-search-icon {
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.admin-search-field .admin-search-input {
+  display: block;
+  width: 100%;
+}
+
+/* =========================================================
+   PAGINACIÓN COMPARTIDA
+   ========================================================= */
+
+.admin-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 13px;
+  margin-top: 13px;
+  padding: 13px 16px;
+  background: #ffffff;
+  border: 1px solid #e9e2da;
+  border-radius: 14px;
+}
+
+.admin-pagination__size {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: #827970;
+  font-size: 11px;
+}
+
+.admin-pagination__select {
+  width: 65px;
+  min-height: 34px;
+  padding: 6px 9px;
+  color: #39332e;
+  background: #faf8f5;
+  border: 1px solid #e6ded5;
+  border-radius: 8px;
+  outline: none;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.admin-pagination__select:focus {
+  border-color: #702d40;
+  box-shadow: 0 0 0 3px rgba(112, 45, 64, 0.09);
+}
+
+.admin-pagination__navigation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.admin-pagination__button,
+.admin-pagination__page {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  min-height: 34px;
+  gap: 5px;
+  padding: 6px 9px;
+  color: #625a52;
+  background: #ffffff;
+  border: 1px solid #e9e2da;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  transition: all 0.18s ease;
+  cursor: pointer;
+}
+
+.admin-pagination__button:hover:not(:disabled),
+.admin-pagination__page:hover:not(.is-active) {
+  color: #702d40;
+  background: #f8f0f1;
+  border-color: #e3cfd4;
+}
+
+.admin-pagination__page.is-active {
+  color: #ffffff;
+  background: #702d40;
+  border-color: #702d40;
+}
+
+.admin-pagination__button:disabled {
+  color: #b8afa6;
+  background: #f8f6f3;
+  border-color: #eee9e3;
+  cursor: not-allowed;
+}
+
+.admin-pagination__ellipsis {
+  padding: 0 3px;
+  color: #9a9087;
+  font-size: 12px;
+}
+
+.admin-pagination__info {
+  color: #827970;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* Responsive */
+
+@media (max-width: 650px) {
+  .admin-pagination {
+    justify-content: center;
+  }
+
+  .admin-pagination__size {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .admin-pagination__navigation {
+    width: 100%;
+  }
+
+  .admin-pagination__info {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+@media (max-width: 390px) {
+  .admin-pagination__button {
+    min-width: 34px;
+    padding: 6px;
+  }
+
+  .admin-pagination__button span {
+    display: none;
+  }
+
+  .admin-pagination__page {
+    min-width: 31px;
+  }
+}
+
+

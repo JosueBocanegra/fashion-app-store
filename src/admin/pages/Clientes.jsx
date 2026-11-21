@@ -1,6 +1,7 @@
 
 import { useEffect, useState } from "react";
 import { clientesService } from "../services/clientesService";
+import AdminPagination from "../components/AdminPagination";
 import "../styles/modulos.css";
 
 const initialForm = {
@@ -22,10 +23,14 @@ const Clientes = () => {
   const [guardando, setGuardando] = useState(false);
   const [busqueda, setBusqueda] = useState("");
 
-  // Estados para la confirmación de eliminación
+  // Estados para la confirmación de eliminación.
   const [clienteAEliminar, setClienteAEliminar] = useState(null);
   const [eliminando, setEliminando] = useState(false);
   const [errorEliminar, setErrorEliminar] = useState("");
+
+  // Paginación.
+  const [paginaActual, setPaginaActual] = useState(1);
+  const [registrosPorPagina, setRegistrosPorPagina] = useState(10);
 
   /* =====================================================
      CARGA DE CLIENTES
@@ -152,14 +157,16 @@ const Clientes = () => {
 
       setClienteAEliminar(null);
     } catch (err) {
-      setErrorEliminar("No se pudo eliminar el cliente. Intenta nuevamente.");
+      setErrorEliminar(
+        "No se pudo eliminar el cliente. Intenta nuevamente."
+      );
     } finally {
       setEliminando(false);
     }
   };
 
   /* =====================================================
-     BÚSQUEDA
+     BÚSQUEDA Y PAGINACIÓN
      ===================================================== */
 
   const clientesFiltrados = clientes.filter((c) => {
@@ -168,6 +175,30 @@ const Clientes = () => {
 
     return texto.includes(busqueda.toLowerCase());
   });
+
+  // Reiniciar la página cuando cambia la búsqueda o la cantidad.
+  useEffect(() => {
+    setPaginaActual(1);
+  }, [busqueda, registrosPorPagina]);
+
+  const totalPaginas = Math.max(
+    1,
+    Math.ceil(clientesFiltrados.length / registrosPorPagina)
+  );
+
+  const paginaActualSegura = Math.min(paginaActual, totalPaginas);
+
+  const clientesPaginados = clientesFiltrados.slice(
+    (paginaActualSegura - 1) * registrosPorPagina,
+    paginaActualSegura * registrosPorPagina
+  );
+
+  // Ajustar la página si se elimina un cliente de la última página.
+  useEffect(() => {
+    if (paginaActual > totalPaginas) {
+      setPaginaActual(totalPaginas);
+    }
+  }, [paginaActual, totalPaginas]);
 
   /* =====================================================
      INTERFAZ
@@ -332,7 +363,7 @@ const Clientes = () => {
               </thead>
 
               <tbody>
-                {clientesFiltrados.map((cliente) => (
+                {clientesPaginados.map((cliente) => (
                   <tr key={cliente.id}>
                     <td>
                       <p className="admin-table-primary-text">
@@ -408,6 +439,19 @@ const Clientes = () => {
           </div>
         )}
       </section>
+
+      {!loading && clientesFiltrados.length > 0 && (
+        <AdminPagination
+          currentPage={paginaActualSegura}
+          totalItems={clientesFiltrados.length}
+          pageSize={registrosPorPagina}
+          onPageChange={setPaginaActual}
+          onPageSizeChange={(cantidad) => {
+            setRegistrosPorPagina(cantidad);
+            setPaginaActual(1);
+          }}
+        />
+      )}
 
       {/* Modal de registro y edición */}
       {modalOpen && (
@@ -584,7 +628,6 @@ const Clientes = () => {
             aria-labelledby="cliente-delete-title"
           >
             <div className="admin-modal-body">
-              {/* Icono de eliminación */}
               <div
                 style={{
                   display: "flex",
@@ -647,7 +690,6 @@ const Clientes = () => {
                 eliminado permanentemente del registro.
               </p>
 
-              {/* Información del cliente */}
               <div className="admin-delete-preview">
                 <div
                   style={{
@@ -688,7 +730,6 @@ const Clientes = () => {
                 </div>
               </div>
 
-              {/* Error de eliminación */}
               {errorEliminar && (
                 <div
                   className="admin-alert admin-alert--error"
@@ -699,7 +740,6 @@ const Clientes = () => {
                 </div>
               )}
 
-              {/* Acciones */}
               <div
                 className="admin-modal-actions"
                 style={{

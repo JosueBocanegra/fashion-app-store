@@ -1,6 +1,8 @@
+
 import { useEffect, useMemo, useState } from "react";
 import { productosService } from "../services/productosService";
 import ImageModal from "../../components/ImageModal";
+import AdminPagination from "../components/AdminPagination";
 import "../styles/modulos.css";
 
 const initialForm = {
@@ -38,6 +40,10 @@ const Productos = () => {
   const [productoAEliminar, setProductoAEliminar] = useState(null);
   const [eliminando, setEliminando] = useState(false);
   const [errorEliminar, setErrorEliminar] = useState("");
+
+  // Paginación
+  const [paginaActual, setPaginaActual] = useState(1);
+  const [registrosPorPagina, setRegistrosPorPagina] = useState(10);
 
   const [confirmacion, setConfirmacion] = useState(() => {
     return sessionStorage.getItem("producto_confirmacion") || null;
@@ -305,6 +311,36 @@ const Productos = () => {
     filtroPromocion,
     filtroBajoStock,
   ]);
+
+  // Reiniciar la página cuando cambien la búsqueda o los filtros.
+  useEffect(() => {
+    setPaginaActual(1);
+  }, [
+    busqueda,
+    filtroCategoria,
+    filtroPromocion,
+    filtroBajoStock,
+    registrosPorPagina,
+  ]);
+
+  const totalPaginas = Math.max(
+    1,
+    Math.ceil(productosFiltrados.length / registrosPorPagina)
+  );
+
+  const paginaActualSegura = Math.min(paginaActual, totalPaginas);
+
+  const productosPaginados = productosFiltrados.slice(
+    (paginaActualSegura - 1) * registrosPorPagina,
+    paginaActualSegura * registrosPorPagina
+  );
+
+  // Ajustar la página si se elimina un registro de la última página.
+  useEffect(() => {
+    if (paginaActual > totalPaginas) {
+      setPaginaActual(totalPaginas);
+    }
+  }, [paginaActual, totalPaginas]);
 
   const metricas = useMemo(() => {
     const total = productos.length;
@@ -669,7 +705,7 @@ const Productos = () => {
               </thead>
 
               <tbody>
-                {productosFiltrados.map((p) => {
+                {productosPaginados.map((p) => {
                   const precioFinal =
                     p.oferta && p.descuento
                       ? p.precio - (p.precio * p.descuento) / 100
@@ -880,6 +916,19 @@ const Productos = () => {
         )}
       </section>
 
+      {!loading && productosFiltrados.length > 0 && (
+        <AdminPagination
+          currentPage={paginaActualSegura}
+          totalItems={productosFiltrados.length}
+          pageSize={registrosPorPagina}
+          onPageChange={setPaginaActual}
+          onPageSizeChange={(cantidad) => {
+            setRegistrosPorPagina(cantidad);
+            setPaginaActual(1);
+          }}
+        />
+      )}
+
       {/* Modal de registro y edición */}
       {modalOpen && (
         <div className="admin-modal-overlay">
@@ -1037,6 +1086,7 @@ const Productos = () => {
                     placeholder="assets/img/foto.jpg"
                     className="admin-field-control"
                   />
+
                   <p className="admin-form-help">
                     Puedes utilizar una ruta de imagen del proyecto o una URL.
                   </p>

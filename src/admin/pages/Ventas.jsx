@@ -2,13 +2,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { ventasService } from "../services/ventasService";
 import { clientesService } from "../services/clientesService";
+import AdminPagination from "../components/AdminPagination";
 import "../styles/modulos.css";
 
 /* =========================================================
    FUNCIONES AUXILIARES
    ========================================================= */
 
-// Normaliza los estados para evitar diferencias por mayúsculas.
+// Conserva los estados históricos, pero normaliza los estados
+// válidos del flujo actual.
 const normalizarEstado = (estado) => {
   const valor = String(estado || "")
     .trim()
@@ -17,17 +19,18 @@ const normalizarEstado = (estado) => {
 
   const equivalencias = {
     pendiente: "Pendiente",
-    "en preparación": "En preparación",
-    "en preparacion": "En preparación",
-    preparacion: "En preparación",
-    "en proceso": "En preparación",
-    procesando: "En preparación",
-    enviado: "Enviado",
-    entregado: "Entregado",
-    completado: "Entregado",
-    completada: "Entregado",
+    "en proceso": "En proceso",
+    completado: "Completado",
+    completada: "Completado",
     cancelado: "Cancelado",
     cancelada: "Cancelado",
+
+    // Estados históricos presentes en registros anteriores.
+    "en preparación": "En preparación",
+    "en preparacion": "En preparación",
+    enviado: "Enviado",
+    entregado: "Entregado",
+
     "sin estado": "Sin estado",
   };
 
@@ -39,7 +42,22 @@ const normalizarEstado = (estado) => {
   );
 };
 
-// Obtiene la fecha local YYYY-MM-DD.
+// Transiciones válidas según las reglas del negocio.
+const obtenerTransicionesPermitidas = (estado) => {
+  const estadoActual = normalizarEstado(estado);
+
+  if (estadoActual === "Pendiente") {
+    return ["En proceso", "Cancelado"];
+  }
+
+  if (estadoActual === "En proceso") {
+    return ["Completado", "Cancelado"];
+  }
+
+  // Completado, Cancelado y estados históricos son finales.
+  return [];
+};
+
 const obtenerFechaLocal = (fecha) => {
   const date = new Date(fecha);
 
@@ -80,7 +98,6 @@ const formatearMoneda = (importe) => {
   });
 };
 
-// Calcula las unidades vendidas considerando las cantidades.
 const obtenerCantidadProductos = (venta) => {
   if (!Array.isArray(venta.items)) return 0;
 
@@ -90,7 +107,6 @@ const obtenerCantidadProductos = (venta) => {
   );
 };
 
-// Utiliza el subtotal guardado o lo calcula para ventas antiguas.
 const obtenerSubtotalItem = (item) => {
   const tieneSubtotal =
     item?.subtotal !== undefined &&
@@ -107,7 +123,6 @@ const obtenerSubtotalItem = (item) => {
   );
 };
 
-// Resuelve el nombre del cliente asociado a una venta.
 const obtenerNombreCliente = (venta, clientesPorId) => {
   if (!venta.clienteId) return "Sin cliente asociado";
 
@@ -126,36 +141,27 @@ const obtenerNombreCliente = (venta, clientesPorId) => {
   return nombreCompleto || cliente.email || "Cliente sin nombre";
 };
 
-// Devuelve la clase visual según el estado de la venta.
 const obtenerClaseEstado = (estado) => {
-  const valor = String(estado || "")
-    .trim()
-    .toLocaleLowerCase("es");
+  const valor = normalizarEstado(estado);
 
-  if (valor === "pendiente") {
+  if (valor === "Pendiente") {
     return "admin-pill--pending";
   }
 
-  if (
-    valor === "en preparación" ||
-    valor === "en preparacion" ||
-    valor === "en proceso"
-  ) {
+  if (valor === "En proceso") {
     return "admin-pill--preparing";
   }
 
-  if (valor === "enviado") {
-    return "admin-pill--shipped";
-  }
-
-  if (valor === "entregado" || valor === "completado") {
+  if (valor === "Completado" || valor === "Entregado") {
     return "admin-pill--delivered";
   }
 
-  if (valor === "cancelado" || valor === "cancelada") {
+  if (valor === "Cancelado") {
     return "admin-pill--cancelled";
   }
 
+  // Los estados históricos se muestran sin convertirlos
+  // ni permitir que se actualicen desde este módulo.
   return "admin-pill--unknown";
 };
 
@@ -176,6 +182,10 @@ const Ventas = () => {
   const [fechaDesde, setFechaDesde] = useState("");
   const [fechaHasta, setFechaHasta] = useState("");
 
+  // Paginación.
+  const [paginaActual, setPaginaActual] = useState(1);
+  const [registrosPorPagina, setRegistrosPorPagina] = useState(10);
+
   // Detalle y actualización de estado.
   const [ventaSeleccionada, setVentaSeleccionada] = useState(null);
   const [actualizandoEstado, setActualizandoEstado] = useState(false);
@@ -185,6 +195,21 @@ const Ventas = () => {
      ===================================================== */
 
   const manejarCambioEstado = async (ventaId, nuevoEstado) => {
+    const ventaActual = ventas.find(
+      (venta) => String(venta.id) === String(ventaId)
+    );
+
+    if (!ventaActual) return;
+
+    const estadoActual = normalizarEstado(ventaActual.estado);
+    const transicionesPermitidas =
+      obtenerTransicionesPermitidas(estadoActual);
+
+    if (!transicionesPermitidas.includes(nuevoEstado)) {
+      alert("La transición de estado seleccionada no está permitida.");
+      return;
+    }
+
     try {
       setActualizandoEstado(true);
 
@@ -194,10 +219,10 @@ const Ventas = () => {
       );
 
       setVentas((prev) =>
-        prev.map((v) =>
-          String(v.id) === String(ventaId)
-            ? { ...v, estado: nuevoEstado }
-            : v
+        prev.map((venta) =>
+          String(venta.id) === String(ventaId)
+            ? { ...venta, estado: nuevoEstado }
+            : venta
         )
       );
 
@@ -212,7 +237,7 @@ const Ventas = () => {
       }
     } catch (err) {
       console.error(
-        "Error al actualizar estado de la venta:",
+        "Error al actualizar el estado de la venta:",
         err
       );
 
@@ -297,7 +322,6 @@ const Ventas = () => {
           String(venta.clienteId || "")
         );
 
-        // Búsqueda por código, cliente o correo.
         const textoBusqueda = [
           venta.id,
           venta.clienteId,
@@ -311,13 +335,11 @@ const Ventas = () => {
         const coincideBusqueda =
           !termino || textoBusqueda.includes(termino);
 
-        // Filtro por estado normalizado.
         const estadoVenta = normalizarEstado(venta.estado);
 
         const coincideEstado =
           !filtroEstado || estadoVenta === filtroEstado;
 
-        // Filtros de fecha inclusivos.
         const fechaVenta = obtenerFechaLocal(venta.fecha);
 
         const coincideDesde =
@@ -348,6 +370,36 @@ const Ventas = () => {
     fechaHasta,
   ]);
 
+  // Reiniciar la página al cambiar búsqueda o filtros.
+  useEffect(() => {
+    setPaginaActual(1);
+  }, [
+    busqueda,
+    filtroEstado,
+    fechaDesde,
+    fechaHasta,
+    registrosPorPagina,
+  ]);
+
+  const totalPaginas = Math.max(
+    1,
+    Math.ceil(ventasFiltradas.length / registrosPorPagina)
+  );
+
+  const paginaActualSegura = Math.min(paginaActual, totalPaginas);
+
+  const ventasPaginadas = ventasFiltradas.slice(
+    (paginaActualSegura - 1) * registrosPorPagina,
+    paginaActualSegura * registrosPorPagina
+  );
+
+  // Ajustar la página si la cantidad de ventas cambia.
+  useEffect(() => {
+    if (paginaActual > totalPaginas) {
+      setPaginaActual(totalPaginas);
+    }
+  }, [paginaActual, totalPaginas]);
+
   /* =====================================================
      LIMPIEZA DE FILTROS
      ===================================================== */
@@ -376,6 +428,13 @@ const Ventas = () => {
   )
     ? ventaSeleccionada.items
     : [];
+
+  const estadoVentaSeleccionada = ventaSeleccionada
+    ? normalizarEstado(ventaSeleccionada.estado)
+    : "";
+
+  const transicionesVentaSeleccionada =
+    obtenerTransicionesPermitidas(estadoVentaSeleccionada);
 
   /* =====================================================
      INTERFAZ
@@ -440,31 +499,33 @@ const Ventas = () => {
             Buscar venta o cliente
           </label>
 
-          <span className="admin-search-icon">
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <circle cx="11" cy="11" r="7" />
-              <path
-                strokeLinecap="round"
-                d="m16 16 4 4"
-              />
-            </svg>
-          </span>
+          <div className="admin-search-field">
+            <span className="admin-search-icon">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <circle cx="11" cy="11" r="7" />
+                <path
+                  strokeLinecap="round"
+                  d="m16 16 4 4"
+                />
+              </svg>
+            </span>
 
-          <input
-            id="ventas-busqueda"
-            type="text"
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Código, nombre o correo..."
-            className="admin-field-control admin-search-input"
-          />
+            <input
+              id="ventas-busqueda"
+              type="text"
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              placeholder="Código, nombre o correo..."
+              className="admin-field-control admin-search-input"
+            />
+          </div>
         </div>
 
         <div className="admin-toolbar__filters">
@@ -575,25 +636,6 @@ const Ventas = () => {
         </div>
       )}
 
-      {/* Resumen del listado */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: "12px",
-          marginBottom: "13px",
-        }}
-      >
-        <p style={{ color: "#827970", fontSize: "11px" }}>
-          Mostrando{" "}
-          <strong style={{ color: "#292522" }}>
-            {ventasFiltradas.length}
-          </strong>{" "}
-          de {ventas.length} ventas
-        </p>
-      </div>
-
       {/* Tabla de ventas */}
       <section className="admin-table-card">
         {loading ? (
@@ -631,7 +673,7 @@ const Ventas = () => {
               </thead>
 
               <tbody>
-                {ventasFiltradas.map((venta, index) => {
+                {ventasPaginadas.map((venta, index) => {
                   const estado = normalizarEstado(venta.estado);
 
                   return (
@@ -693,9 +735,7 @@ const Ventas = () => {
                         <div className="admin-row-actions">
                           <button
                             type="button"
-                            onClick={() =>
-                              setVentaSeleccionada(venta)
-                            }
+                            onClick={() => setVentaSeleccionada(venta)}
                             title="Ver detalle de venta"
                             aria-label={`Ver detalle de la venta ${venta.id}`}
                             className="admin-row-action"
@@ -726,6 +766,19 @@ const Ventas = () => {
           </div>
         )}
       </section>
+
+      {!loading && ventasFiltradas.length > 0 && (
+        <AdminPagination
+          currentPage={paginaActualSegura}
+          totalItems={ventasFiltradas.length}
+          pageSize={registrosPorPagina}
+          onPageChange={setPaginaActual}
+          onPageSizeChange={(cantidad) => {
+            setRegistrosPorPagina(cantidad);
+            setPaginaActual(1);
+          }}
+        />
+      )}
 
       {/* =================================================
           MODAL DE DETALLE DE VENTA
@@ -828,28 +881,54 @@ const Ventas = () => {
                       Cambiar estado
                     </label>
 
-                    <select
-                      id="venta-cambiar-estado"
-                      value={normalizarEstado(
-                        ventaSeleccionada.estado
-                      )}
-                      onChange={(e) =>
-                        manejarCambioEstado(
-                          ventaSeleccionada.id,
-                          e.target.value
-                        )
-                      }
-                      disabled={actualizandoEstado}
-                      className="admin-field-control admin-detail-status-select"
-                    >
-                      <option value="Pendiente">Pendiente</option>
-                      <option value="En preparación">
-                        En preparación
-                      </option>
-                      <option value="Enviado">Enviado</option>
-                      <option value="Entregado">Entregado</option>
-                      <option value="Cancelado">Cancelado</option>
-                    </select>
+                    {transicionesVentaSeleccionada.length > 0 ? (
+                      <select
+                        id="venta-cambiar-estado"
+                        value={estadoVentaSeleccionada}
+                        onChange={(e) =>
+                          manejarCambioEstado(
+                            ventaSeleccionada.id,
+                            e.target.value
+                          )
+                        }
+                        disabled={actualizandoEstado}
+                        className="admin-field-control admin-detail-status-select"
+                      >
+                        <option value={estadoVentaSeleccionada}>
+                          {estadoVentaSeleccionada}
+                        </option>
+
+                        {transicionesVentaSeleccionada.map((estado) => (
+                          <option key={estado} value={estado}>
+                            {estado}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div>
+                        <span
+                          className={`admin-pill ${obtenerClaseEstado(
+                            estadoVentaSeleccionada
+                          )}`}
+                        >
+                          {estadoVentaSeleccionada}
+                        </span>
+
+                        <p
+                          style={{
+                            marginTop: "6px",
+                            color: "#827970",
+                            fontSize: "10px",
+                          }}
+                        >
+                          {["Completado", "Cancelado"].includes(
+                            estadoVentaSeleccionada
+                          )
+                            ? "Este es un estado final. No permite más cambios."
+                            : "Estado de un registro histórico. No permite cambios."}
+                        </p>
+                      </div>
+                    )}
 
                     {actualizandoEstado && (
                       <span
