@@ -817,4 +817,168 @@ button.admin-stat-card:hover {
   }
 }
 
+/* =========================================================
+   MÓDULO DE VENTAS
+   ========================================================= */
+
+.admin-sales-table {
+  min-width: 980px;
+}
+
+/* Estados de las ventas */
+
+.admin-pill--pending {
+  color: #906a2e;
+  background: #faf3e7;
+  border-color: #ecdfc6;
+}
+
+.admin-pill--preparing {
+  color: #59677b;
+  background: #eef2f7;
+  border-color: #dce4ee;
+}
+
+.admin-pill--shipped {
+  color: #715f87;
+  background: #f3eff8;
+  border-color: #e2d9ed;
+}
+
+.admin-pill--delivered {
+  color: #47775b;
+  background: #edf5ef;
+  border-color: #d9e9dd;
+}
+
+.admin-pill--cancelled {
+  color: #923e45;
+  background: #fcf1f1;
+  border-color: #efd6d7;
+}
+
+.admin-pill--unknown {
+  color: #655c53;
+  background: #f4f0eb;
+  border-color: #e9e1d8;
+}
+
+/* Detalle de venta */
+
+.admin-detail-section {
+  padding: 17px;
+  background: #ffffff;
+  border: 1px solid #e9e2da;
+  border-radius: 12px;
+}
+
+.admin-detail-section__heading {
+  margin-bottom: 13px;
+}
+
+.admin-detail-section__title {
+  color: #292522;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.admin-detail-section__description {
+  margin-top: 4px;
+  color: #9a9087;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.admin-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.admin-detail-info {
+  min-width: 0;
+  padding: 13px;
+  background: #f8f5f1;
+  border: 1px solid #eee8e1;
+  border-radius: 10px;
+}
+
+.admin-detail-info__label {
+  color: #92877d;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.admin-detail-info__value {
+  margin-top: 6px;
+  color: #39332e;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.admin-detail-status-select {
+  width: auto;
+  min-width: 165px;
+  max-width: 220px;
+  background-color: #ffffff;
+}
+
+.admin-detail-items-table {
+  min-width: 520px;
+}
+
+.admin-detail-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 17px;
+  background: #f8f5f1;
+  border: 1px solid #e9e2da;
+  border-radius: 12px;
+}
+
+.admin-detail-total__label {
+  color: #625a52;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.admin-detail-total__value {
+  color: #702d40;
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  text-align: right;
+}
+
+.admin-detail-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 15px 22px;
+  border-top: 1px solid #eee8e1;
+}
+
+@media (max-width: 600px) {
+  .admin-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-detail-section {
+    padding: 13px;
+  }
+
+  .admin-detail-status-select {
+    width: 100%;
+    max-width: none;
+  }
+
+  .admin-detail-total__value {
+    font-size: 18px;
+  }
+}
+
 
