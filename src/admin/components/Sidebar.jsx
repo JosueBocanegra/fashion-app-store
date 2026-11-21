@@ -251,29 +251,16 @@ const Sidebar = ({ isOpen = false, onClose = () => {} }) => {
 
         </nav>
 
-        {/* Información inferior */}
+        {/* Cerrar sesión */}
         <div className="px-4 pb-3">
-
-          <div className="rounded-xl bg-white/[0.04] border border-white/[0.07] p-3 mb-3">
-            <p className="text-[10px] text-[#B7A493] font-semibold tracking-wider uppercase">
-              Fashion Store
-            </p>
-
-            <p className="text-[11px] text-white/50 mt-1">
-              Sistema de gestión de tienda
-            </p>
-          </div>
-
           <button
             type="button"
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[13px] font-medium text-[#C4BBB2] hover:bg-white/[0.06] hover:text-white transition-colors cursor-pointer"
           >
             <LogOut size={18} className="text-[#B7A493]" />
-
             <span>Cerrar sesión</span>
           </button>
-
         </div>
 
         {/* Pie del menú */}
