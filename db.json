@@ -97,17 +97,17 @@
   ],
   "usuarios": [
     {
-      "id": "1",
       "nombre": "Administrador",
       "email": "admin@gmail.com",
       "password": "123456",
-      "rol": "admin"
+      "rol": "admin",
+      "id": "1"
     },
     {
       "nombre": "José Pérez",
       "email": "JosePerez@gmail.com",
       "password": "123456",
-      "rol": "admin",
+      "rol": "empleado",
       "id": "_JMrkfMIan4"
     },
     {
@@ -121,14 +121,14 @@
       "nombre": "Santiago Quiroga",
       "email": "SantiagoQuiroga@gmail.com",
       "password": "123456",
-      "rol": "admin",
+      "rol": "empleado",
       "id": "IHf8rYHzz1w"
     },
     {
       "nombre": "Anyelo Linares",
       "email": "anyelo.linares.pe@gmail.com",
       "password": "123456",
-      "rol": "admin",
+      "rol": "empleado",
       "id": "usr-anyelo"
     }
   ],
