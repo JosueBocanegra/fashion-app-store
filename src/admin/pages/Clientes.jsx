@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { clientesService } from "../services/clientesService";
 import "../styles/modulos.css";
@@ -20,6 +21,11 @@ const Clientes = () => {
   const [form, setForm] = useState(initialForm);
   const [guardando, setGuardando] = useState(false);
   const [busqueda, setBusqueda] = useState("");
+
+  // Estados para la confirmación de eliminación
+  const [clienteAEliminar, setClienteAEliminar] = useState(null);
+  const [eliminando, setEliminando] = useState(false);
+  const [errorEliminar, setErrorEliminar] = useState("");
 
   /* =====================================================
      CARGA DE CLIENTES
@@ -116,24 +122,39 @@ const Clientes = () => {
   };
 
   /* =====================================================
-     ELIMINACIÓN
+     ELIMINACIÓN DE CLIENTES
      ===================================================== */
 
-  const handleEliminar = async (cliente) => {
-    const confirmar = window.confirm(
-      `¿Eliminar a ${cliente.nombre} ${cliente.apellido}? Esta acción no se puede deshacer.`
-    );
+  const abrirModalEliminar = (cliente) => {
+    setErrorEliminar("");
+    setClienteAEliminar(cliente);
+  };
 
-    if (!confirmar) return;
+  const cerrarModalEliminar = () => {
+    if (eliminando) return;
+
+    setClienteAEliminar(null);
+    setErrorEliminar("");
+  };
+
+  const confirmarEliminar = async () => {
+    if (!clienteAEliminar) return;
+
+    setEliminando(true);
+    setErrorEliminar("");
 
     try {
-      await clientesService.eliminarCliente(cliente.id);
+      await clientesService.eliminarCliente(clienteAEliminar.id);
 
       setClientes((prev) =>
-        prev.filter((c) => c.id !== cliente.id)
+        prev.filter((c) => c.id !== clienteAEliminar.id)
       );
+
+      setClienteAEliminar(null);
     } catch (err) {
-      setError("No se pudo eliminar el cliente.");
+      setErrorEliminar("No se pudo eliminar el cliente. Intenta nuevamente.");
+    } finally {
+      setEliminando(false);
     }
   };
 
@@ -198,7 +219,9 @@ const Clientes = () => {
       {/* Resumen de clientes */}
       <section
         className="admin-stat-grid"
-        style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}
+        style={{
+          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+        }}
       >
         <div className="admin-stat-card">
           <p className="admin-stat-card__label">
@@ -215,7 +238,7 @@ const Clientes = () => {
         </div>
       </section>
 
-      {/* Mensaje de error */}
+      {/* Mensaje de error general */}
       {error && (
         <div className="admin-alert admin-alert--error" role="alert">
           <svg
@@ -321,30 +344,25 @@ const Clientes = () => {
                       </span>
                     </td>
 
-                    <td>
-                      {cliente.email || "—"}
-                    </td>
+                    <td>{cliente.email || "—"}</td>
 
-                    <td>
-                      {cliente.telefono || "—"}
-                    </td>
+                    <td>{cliente.telefono || "—"}</td>
 
-                    <td>
-                      {cliente.dni || "—"}
-                    </td>
+                    <td>{cliente.dni || "—"}</td>
 
                     <td>
                       <div className="admin-row-actions">
+                        {/* Editar */}
                         <button
                           type="button"
                           onClick={() => abrirEditar(cliente)}
-                          className="admin-row-action"
                           title="Editar cliente"
                           aria-label={`Editar a ${cliente.nombre} ${cliente.apellido}`}
+                          className="admin-row-action"
                         >
                           <svg
-                            width="15"
-                            height="15"
+                            width="16"
+                            height="16"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
@@ -356,20 +374,19 @@ const Clientes = () => {
                               d="m15 5 4 4M4 20l4.5-1 11-11a2.8 2.8 0 0 0-4-4l-11 11L4 20Z"
                             />
                           </svg>
-
-                          <span>Editar</span>
                         </button>
 
+                        {/* Eliminar */}
                         <button
                           type="button"
-                          onClick={() => handleEliminar(cliente)}
-                          className="admin-row-action admin-row-action--danger"
+                          onClick={() => abrirModalEliminar(cliente)}
                           title="Eliminar cliente"
                           aria-label={`Eliminar a ${cliente.nombre} ${cliente.apellido}`}
+                          className="admin-row-action admin-row-action--danger"
                         >
                           <svg
-                            width="15"
-                            height="15"
+                            width="16"
+                            height="16"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
@@ -381,8 +398,6 @@ const Clientes = () => {
                               d="M4 7h16M10 11v6m4-6v6M5 7l1 14h12l1-14M9 7V4h6v3"
                             />
                           </svg>
-
-                          <span>Eliminar</span>
                         </button>
                       </div>
                     </td>
@@ -555,6 +570,162 @@ const Clientes = () => {
                 </button>
               </div>
             </form>
+          </section>
+        </div>
+      )}
+
+      {/* Modal de confirmación de eliminación */}
+      {clienteAEliminar && (
+        <div className="admin-modal-overlay">
+          <section
+            className="admin-modal-card admin-modal-card--small"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="cliente-delete-title"
+          >
+            <div className="admin-modal-body">
+              {/* Icono de eliminación */}
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  marginBottom: "15px",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "53px",
+                    height: "53px",
+                    color: "#a33f49",
+                    background: "#fbefef",
+                    border: "1px solid #f0dddd",
+                    borderRadius: "15px",
+                  }}
+                >
+                  <svg
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M4 7h16M10 11v6m4-6v6M5 7l1 14h12l1-14M9 7V4h6v3"
+                    />
+                  </svg>
+                </div>
+              </div>
+
+              <h2
+                id="cliente-delete-title"
+                style={{
+                  color: "#292522",
+                  fontSize: "19px",
+                  fontWeight: 700,
+                  textAlign: "center",
+                }}
+              >
+                ¿Eliminar este cliente?
+              </h2>
+
+              <p
+                style={{
+                  marginTop: "7px",
+                  color: "#827970",
+                  fontSize: "12px",
+                  lineHeight: 1.6,
+                  textAlign: "center",
+                }}
+              >
+                Esta acción no se puede deshacer. El cliente será
+                eliminado permanentemente del registro.
+              </p>
+
+              {/* Información del cliente */}
+              <div className="admin-delete-preview">
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    width: "48px",
+                    height: "48px",
+                    color: "#702d40",
+                    background: "#f3e7e9",
+                    borderRadius: "10px",
+                    fontSize: "16px",
+                    fontWeight: 700,
+                  }}
+                >
+                  {clienteAEliminar.nombre?.charAt(0)?.toUpperCase() || "C"}
+                </div>
+
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <p className="admin-table-primary-text">
+                    {clienteAEliminar.nombre} {clienteAEliminar.apellido}
+                  </p>
+
+                  <p className="admin-table-secondary-text">
+                    {clienteAEliminar.email || "Sin correo registrado"}
+                  </p>
+
+                  <p
+                    style={{
+                      marginTop: "5px",
+                      color: "#827970",
+                      fontSize: "11px",
+                    }}
+                  >
+                    DNI: {clienteAEliminar.dni || "No registrado"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Error de eliminación */}
+              {errorEliminar && (
+                <div
+                  className="admin-alert admin-alert--error"
+                  role="alert"
+                  style={{ marginTop: "14px", marginBottom: 0 }}
+                >
+                  {errorEliminar}
+                </div>
+              )}
+
+              {/* Acciones */}
+              <div
+                className="admin-modal-actions"
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                }}
+              >
+                <button
+                  type="button"
+                  disabled={eliminando}
+                  onClick={cerrarModalEliminar}
+                  className="admin-secondary-button"
+                >
+                  Cancelar
+                </button>
+
+                <button
+                  type="button"
+                  disabled={eliminando}
+                  onClick={confirmarEliminar}
+                  className="admin-danger-button"
+                >
+                  {eliminando ? "Eliminando..." : "Sí, eliminar"}
+                </button>
+              </div>
+            </div>
           </section>
         </div>
       )}
