@@ -1,5 +1,15 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { obtenerRutaInicial } from "../utils/permisos";
+import {
+  ArrowRight,
+  Eye,
+  EyeOff,
+  LoaderCircle,
+  LockKeyhole,
+  Mail,
+  ShoppingBag,
+} from "lucide-react";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -7,8 +17,10 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
   const navigate = useNavigate();
 
+  // Se conserva el proceso de autenticación existente.
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -17,8 +29,11 @@ const Login = () => {
     try {
       const res = await fetch("http://localhost:3001/usuarios");
       const usuarios = await res.json();
+
       const user = usuarios.find(
-        (u) => u.email === email.trim() && u.password === password
+        (u) =>
+          u.email === email.trim() &&
+          u.password === password
       );
 
       if (user) {
@@ -27,304 +42,282 @@ const Login = () => {
           nombre: user.nombre,
           email: user.email,
           rol: user.rol,
+          modulos: Array.isArray(user.modulos) ? user.modulos : [],
         };
-        localStorage.setItem("adminUser", JSON.stringify(payload));
-        navigate("/admin/dashboard");
+
+        localStorage.setItem(
+          "adminUser",
+          JSON.stringify(payload)
+        );
+
+        // Enviar al primer módulo autorizado.
+        navigate(obtenerRutaInicial(payload));
       } else {
-        setError("Las credenciales no coinciden con nuestros registros.");
+        setError(
+          "Las credenciales no coinciden con nuestros registros."
+        );
       }
     } catch {
-      setError("No pudimos conectar con el servidor. Intenta más tarde.");
+      setError(
+        "No pudimos conectar con el servidor. Intenta más tarde."
+      );
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex bg-stone-100">
-      {/* ---------- Lado izquierdo: marca ---------- */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-[#3a2a30] via-[#2a1e24] to-[#1a1216]">
-        {/* Halos decorativos tenues */}
-        <div className="absolute -top-24 -left-24 w-72 h-72 bg-rose-200/[0.06] rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-0 w-96 h-96 bg-amber-200/[0.05] rounded-full blur-3xl" />
-        <div className="absolute top-1/3 left-1/2 w-40 h-40 bg-rose-100/[0.04] rounded-full blur-2xl" />
+    <main className="min-h-screen grid lg:grid-cols-[0.92fr_1.08fr] bg-[#F5F1EB]">
 
-        <div className="relative z-10 flex flex-col justify-between p-12 text-neutral-100 w-full">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-white/[0.08] backdrop-blur border border-white/10 flex items-center justify-center font-light text-lg tracking-widest">
-              FS
-            </div>
-            <div className="leading-tight">
-              <p className="text-sm tracking-[0.22em] uppercase text-neutral-200">
-                Fashion Store
-              </p>
-              <p className="text-[10px] tracking-[0.28em] uppercase text-neutral-500">
-                Boutique · Atelier
-              </p>
-            </div>
+      {/* -----------------------------------------
+          IDENTIDAD DE FASHION STORE
+      ------------------------------------------ */}
+      <section className="hidden lg:flex flex-col justify-between bg-[#292522] px-12 xl:px-16 py-10 text-white">
+
+        {/* Marca */}
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-xl border border-white/15 bg-white/5 flex items-center justify-center">
+            <ShoppingBag
+              size={21}
+              className="text-[#D8C5A5]"
+            />
           </div>
 
-          <div className="max-w-md">
-            <div className="flex items-center gap-4 mb-6">
-              <span className="h-px w-10 bg-neutral-600" />
-              <span className="text-[10px] tracking-[0.35em] uppercase text-neutral-400">
-                Panel privado
-              </span>
-            </div>
-
-            <h1 className="text-4xl xl:text-5xl font-light leading-tight mb-5 tracking-tight">
-              Estilo que <br />
-              <span className="italic font-serif text-rose-200/80">
-                trasciende
-              </span>{" "}
-              temporadas.
-            </h1>
-            <p className="text-neutral-400/90 text-sm leading-relaxed max-w-sm">
-              Bienvenido al espacio reservado para el equipo de Fashion Store.
-              Inicia sesión con tus credenciales asignadas.
+          <div>
+            <p className="text-sm font-semibold tracking-[0.2em] uppercase">
+              Fashion Store
             </p>
-          </div>
 
-          <div className="flex items-center justify-between text-[11px] tracking-[0.22em] uppercase text-neutral-500">
-            <span>© {new Date().getFullYear()} Fashion Store</span>
-            <span className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400/70" />
-              Sistema activo
-            </span>
+            <p className="text-[10px] tracking-[0.2em] uppercase text-[#B7A493] mt-1">
+              Administración
+            </p>
           </div>
         </div>
 
-        {/* Separador vertical sutil */}
-        <div className="absolute top-0 right-0 h-full w-px bg-gradient-to-b from-transparent via-white/5 to-transparent" />
-      </div>
+        {/* Mensaje institucional */}
+        <div className="max-w-md">
 
-      {/* ---------- Lado derecho: formulario ---------- */}
-      <div className="flex-1 flex items-center justify-center p-6 sm:p-10">
-        <div className="w-full max-w-md">
-          {/* Logo móvil */}
-          <div className="lg:hidden flex items-center gap-3 mb-10 justify-center">
-            <div className="w-10 h-10 rounded-xl bg-[#2a1e24] flex items-center justify-center text-neutral-100 font-light tracking-widest text-sm">
-              FS
-            </div>
-            <span className="text-sm tracking-[0.22em] uppercase text-neutral-700">
-              Fashion Store
+          <div className="w-10 h-[3px] bg-[#702D40] mb-7 rounded-full" />
+
+          <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-[#B7A493] mb-4">
+            Panel de gestión
+          </p>
+
+          <h1 className="text-4xl xl:text-5xl font-light leading-tight tracking-tight">
+            Moda, estilo y
+            <span className="block text-[#D8C5A5] mt-1">
+              administración.
             </span>
+          </h1>
+
+          <p className="text-sm leading-7 text-[#B7A493] mt-6 max-w-sm">
+            Accede al sistema de gestión de Fashion Store
+            para administrar los productos, clientes,
+            ventas y demás operaciones de la tienda.
+          </p>
+
+        </div>
+
+        {/* Pie */}
+        <div className="flex items-center justify-between border-t border-white/10 pt-5">
+          <p className="text-[10px] tracking-wider text-white/40">
+            © {new Date().getFullYear()} Fashion Store
+          </p>
+
+          <p className="text-[10px] uppercase tracking-wider text-white/40">
+            Acceso privado
+          </p>
+        </div>
+
+      </section>
+
+      {/* -----------------------------------------
+          FORMULARIO DE ACCESO
+      ------------------------------------------ */}
+      <section className="min-h-screen flex flex-col items-center justify-center px-5 py-10 sm:px-8">
+
+        {/* Marca para dispositivos móviles */}
+        <div className="lg:hidden flex items-center justify-center gap-3 mb-9">
+          <div className="w-10 h-10 rounded-xl bg-[#292522] flex items-center justify-center">
+            <ShoppingBag
+              size={20}
+              className="text-[#D8C5A5]"
+            />
           </div>
 
+          <div>
+            <p className="text-sm font-semibold tracking-[0.18em] uppercase text-[#292522]">
+              Fashion Store
+            </p>
+
+            <p className="text-[10px] tracking-wider uppercase text-[#8A8178] mt-0.5">
+              Administración
+            </p>
+          </div>
+        </div>
+
+        <div className="w-full max-w-[440px] bg-white border border-[#E8E0D7] rounded-2xl shadow-sm p-7 sm:p-10">
+
+          {/* Encabezado del formulario */}
           <div className="mb-8">
-            <p className="text-[10px] tracking-[0.35em] uppercase text-neutral-500 mb-3">
-              Acceso
+
+            <p className="text-[10px] font-semibold tracking-[0.22em] uppercase text-[#702D40] mb-3">
+              Acceso administrativo
             </p>
-            <h2 className="text-3xl font-light text-neutral-900 tracking-tight">
-              Bienvenido de nuevo
+
+            <h2 className="text-3xl font-semibold tracking-tight text-[#292522]">
+              Iniciar sesión
             </h2>
-            <p className="text-neutral-500 mt-2 text-sm">
-              Ingresa tus credenciales para continuar.
+
+            <p className="text-sm text-[#8A8178] mt-2 leading-relaxed">
+              Ingresa tus credenciales para acceder al panel
+              de administración.
             </p>
+
           </div>
 
+          {/* Mensaje de error */}
           {error && (
-            <div className="mb-5 flex items-start gap-3 bg-rose-50 border border-rose-200 text-rose-800 text-sm rounded-xl p-3.5 animate-[fadeIn_0.25s_ease]">
-              <svg
-                className="w-5 h-5 flex-shrink-0 mt-0.5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth="1.8"
-              >
-                <circle cx="12" cy="12" r="9" />
-                <path strokeLinecap="round" d="M12 8v4m0 4h.01" />
-              </svg>
+            <div
+              role="alert"
+              className="mb-5 flex items-start gap-2.5 rounded-lg border border-[#702D40]/20 bg-[#702D40]/5 px-3.5 py-3 text-sm text-[#702D40]"
+            >
+              <span className="font-semibold">!</span>
               <span>{error}</span>
             </div>
           )}
 
+          {/* Formulario */}
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Email */}
+
+            {/* Correo electrónico */}
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1.5">
+              <label
+                htmlFor="admin-email"
+                className="block text-xs font-semibold text-[#292522] mb-2"
+              >
                 Correo electrónico
               </label>
+
               <div className="relative">
-                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-neutral-400 pointer-events-none">
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth="1.6"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M3 8l9 6 9-6M4 6h16a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V7a1 1 0 011-1z"
-                    />
-                  </svg>
-                </span>
+                <Mail
+                  size={18}
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#B7A493] pointer-events-none"
+                />
+
                 <input
+                  id="admin-email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   autoComplete="email"
-                  placeholder="nombre@fashion.com"
-                  className="w-full pl-11 pr-4 py-3 bg-white border border-stone-200 rounded-xl text-neutral-800 placeholder-neutral-400
-                             focus:outline-none focus:border-[#8a5a63] focus:ring-4 focus:ring-[#8a5a63]/10 transition"
+                  placeholder="nombre@fashionstore.com"
+                  className="w-full h-12 pl-11 pr-4 bg-white border border-[#E8E0D7] rounded-lg text-sm text-[#292522] placeholder:text-[#B7A493] outline-none transition-all focus:border-[#702D40] focus:ring-2 focus:ring-[#702D40]/10"
                 />
               </div>
             </div>
 
-            {/* Password */}
+            {/* Contraseña */}
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-sm font-medium text-neutral-700">
+              <div className="flex items-center justify-between mb-2">
+                <label
+                  htmlFor="admin-password"
+                  className="block text-xs font-semibold text-[#292522]"
+                >
                   Contraseña
                 </label>
+
                 <button
                   type="button"
-                  className="text-xs text-[#8a5a63] hover:text-[#6d454c] font-medium transition-colors"
                   onClick={() =>
                     alert("Contacta al administrador del sistema.")
                   }
+                  className="text-[11px] text-[#702D40] hover:underline cursor-pointer"
                 >
                   ¿Olvidaste tu contraseña?
                 </button>
               </div>
+
               <div className="relative">
-                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-neutral-400 pointer-events-none">
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth="1.6"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                    />
-                  </svg>
-                </span>
+                <LockKeyhole
+                  size={18}
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#B7A493] pointer-events-none"
+                />
+
                 <input
+                  id="admin-password"
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   autoComplete="current-password"
-                  placeholder="••••••••"
-                  className="w-full pl-11 pr-12 py-3 bg-white border border-stone-200 rounded-xl text-neutral-800 placeholder-neutral-400
-                             focus:outline-none focus:border-[#8a5a63] focus:ring-4 focus:ring-[#8a5a63]/10 transition"
+                  placeholder="Ingresa tu contraseña"
+                  className="w-full h-12 pl-11 pr-12 bg-white border border-[#E8E0D7] rounded-lg text-sm text-[#292522] placeholder:text-[#B7A493] outline-none transition-all focus:border-[#702D40] focus:ring-2 focus:ring-[#702D40]/10"
                 />
+
                 <button
                   type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-neutral-400 hover:text-neutral-600 transition-colors"
-                  aria-label={showPassword ? "Ocultar" : "Mostrar"}
+                  onClick={() =>
+                    setShowPassword((previous) => !previous)
+                  }
+                  aria-label={
+                    showPassword
+                      ? "Ocultar contraseña"
+                      : "Mostrar contraseña"
+                  }
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#B7A493] hover:text-[#292522] transition-colors cursor-pointer"
                 >
                   {showPassword ? (
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M13.875 18.825A10.05 10.05 0 0112 19c-5 0-9-4-10-7 0 0 1-3 4-5m3.5 9.5A3 3 0 019 12m12 0c-1-2-4-6-9-6m2.11-.89L21 21M3 3l18 18"
-                      />
-                    </svg>
+                    <EyeOff size={18} />
                   ) : (
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                      />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                      />
-                    </svg>
+                    <Eye size={18} />
                   )}
                 </button>
               </div>
             </div>
 
-            {/* Submit */}
+            {/* Botón de acceso */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 rounded-xl font-medium text-white tracking-wide
-                         bg-[#8a5a63] hover:bg-[#754b53]
-                         focus:outline-none focus:ring-4 focus:ring-[#8a5a63]/25
-                         shadow-md shadow-[#8a5a63]/15
-                         disabled:opacity-60 disabled:cursor-not-allowed
-                         transition-all duration-200 flex items-center justify-center gap-2"
+              className="w-full h-12 mt-2 flex items-center justify-center gap-2 rounded-lg bg-[#702D40] hover:bg-[#5E2435] text-white text-sm font-semibold transition-colors focus:outline-none focus:ring-4 focus:ring-[#702D40]/15 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
             >
               {loading ? (
                 <>
-                  <svg
-                    className="w-5 h-5 animate-spin"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                    />
-                  </svg>
+                  <LoaderCircle
+                    size={18}
+                    className="animate-spin"
+                  />
                   Verificando...
                 </>
               ) : (
                 <>
                   Iniciar sesión
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M14 5l7 7-7 7M21 12H3"
-                    />
-                  </svg>
+                  <ArrowRight size={17} />
                 </>
               )}
             </button>
+
           </form>
 
-          <div className="mt-10 flex items-center justify-center gap-3">
-            <span className="h-px w-8 bg-stone-300" />
-            <span className="text-[10px] tracking-[0.3em] uppercase text-neutral-500">
-              Acceso restringido
-            </span>
-            <span className="h-px w-8 bg-stone-300" />
+          {/* Pie del formulario */}
+          <div className="mt-8 pt-5 border-t border-[#E8E0D7]">
+            <p className="text-center text-[10px] uppercase tracking-[0.16em] text-[#A69A8E]">
+              Acceso exclusivo para personal autorizado
+            </p>
           </div>
+
         </div>
-      </div>
-    </div>
+
+        {/* Copyright móvil */}
+        <p className="lg:hidden text-[10px] text-[#A69A8E] mt-7">
+          © {new Date().getFullYear()} Fashion Store
+        </p>
+
+      </section>
+
+    </main>
   );
 };
 

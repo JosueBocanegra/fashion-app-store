@@ -1,9 +1,16 @@
+
 import { useEffect, useMemo, useState } from "react";
 import { ventasService } from "../services/ventasService";
 import { clientesService } from "../services/clientesService";
+import AdminPagination from "../components/AdminPagination";
+import "../styles/modulos.css";
 
-// Normaliza los estados para evitar diferencias por mayúsculas
-// y mantener una presentación uniforme.
+/* =========================================================
+   FUNCIONES AUXILIARES
+   ========================================================= */
+
+// Conserva los estados históricos, pero normaliza los estados
+// válidos del flujo actual.
 const normalizarEstado = (estado) => {
   const valor = String(estado || "")
     .trim()
@@ -12,27 +19,45 @@ const normalizarEstado = (estado) => {
 
   const equivalencias = {
     pendiente: "Pendiente",
-    "en preparación": "En preparación",
-    "en preparacion": "En preparación",
-    preparacion: "En preparación",
-    "en proceso": "En preparación",
-    procesando: "En preparación",
-    enviado: "Enviado",
-    entregado: "Entregado",
-    completado: "Entregado",
-    completada: "Entregado",
+    "en proceso": "En proceso",
+    completado: "Completado",
+    completada: "Completado",
     cancelado: "Cancelado",
     cancelada: "Cancelado",
+
+    // Estados históricos presentes en registros anteriores.
+    "en preparación": "En preparación",
+    "en preparacion": "En preparación",
+    enviado: "Enviado",
+    entregado: "Entregado",
+
     "sin estado": "Sin estado",
   };
 
-  return equivalencias[valor] || (
-    valor ? valor.charAt(0).toUpperCase() + valor.slice(1) : "Sin estado"
+  return (
+    equivalencias[valor] ||
+    (valor
+      ? valor.charAt(0).toUpperCase() + valor.slice(1)
+      : "Sin estado")
   );
 };
 
-// Obtiene la fecha en formato local YYYY-MM-DD.
-// Se utiliza para comparar correctamente los filtros de fecha.
+// Transiciones válidas según las reglas del negocio.
+const obtenerTransicionesPermitidas = (estado) => {
+  const estadoActual = normalizarEstado(estado);
+
+  if (estadoActual === "Pendiente") {
+    return ["En proceso", "Cancelado"];
+  }
+
+  if (estadoActual === "En proceso") {
+    return ["Completado", "Cancelado"];
+  }
+
+  // Completado, Cancelado y estados históricos son finales.
+  return [];
+};
+
 const obtenerFechaLocal = (fecha) => {
   const date = new Date(fecha);
 
@@ -73,8 +98,6 @@ const formatearMoneda = (importe) => {
   });
 };
 
-// Calcula las unidades vendidas considerando las cantidades
-// de cada producto, no solamente el número de líneas.
 const obtenerCantidadProductos = (venta) => {
   if (!Array.isArray(venta.items)) return 0;
 
@@ -84,7 +107,6 @@ const obtenerCantidadProductos = (venta) => {
   );
 };
 
-// Utiliza el subtotal guardado o lo calcula para ventas antiguas.
 const obtenerSubtotalItem = (item) => {
   const tieneSubtotal =
     item?.subtotal !== undefined &&
@@ -101,7 +123,6 @@ const obtenerSubtotalItem = (item) => {
   );
 };
 
-// Resuelve el nombre del cliente asociado a una venta.
 const obtenerNombreCliente = (venta, clientesPorId) => {
   if (!venta.clienteId) return "Sin cliente asociado";
 
@@ -121,34 +142,32 @@ const obtenerNombreCliente = (venta, clientesPorId) => {
 };
 
 const obtenerClaseEstado = (estado) => {
-  const valor = String(estado || "").toLocaleLowerCase("es");
+  const valor = normalizarEstado(estado);
 
-  if (valor === "pendiente") {
-    return "bg-amber-50 text-amber-700 border-amber-200";
+  if (valor === "Pendiente") {
+    return "admin-pill--pending";
   }
 
-  if (
-    valor === "en preparación" ||
-    valor === "en preparacion" ||
-    valor === "en proceso"
-  ) {
-    return "bg-blue-50 text-blue-700 border-blue-200";
+  if (valor === "En proceso") {
+    return "admin-pill--preparing";
   }
 
-  if (valor === "enviado") {
-    return "bg-purple-50 text-purple-700 border-purple-200";
+  if (valor === "Completado" || valor === "Entregado") {
+    return "admin-pill--delivered";
   }
 
-  if (valor === "entregado" || valor === "completado") {
-    return "bg-emerald-50 text-emerald-700 border-emerald-200";
+  if (valor === "Cancelado") {
+    return "admin-pill--cancelled";
   }
 
-  if (valor === "cancelado") {
-    return "bg-rose-50 text-rose-700 border-rose-200";
-  }
-
-  return "bg-stone-100 text-neutral-600 border-stone-200";
+  // Los estados históricos se muestran sin convertirlos
+  // ni permitir que se actualicen desde este módulo.
+  return "admin-pill--unknown";
 };
+
+/* =========================================================
+   COMPONENTE PRINCIPAL
+   ========================================================= */
 
 const Ventas = () => {
   const [ventas, setVentas] = useState([]);
@@ -157,24 +176,53 @@ const Ventas = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Filtros
+  // Filtros.
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("");
   const [fechaDesde, setFechaDesde] = useState("");
   const [fechaHasta, setFechaHasta] = useState("");
+
+  // Paginación.
+  const [paginaActual, setPaginaActual] = useState(1);
+  const [registrosPorPagina, setRegistrosPorPagina] = useState(10);
+
+  // Detalle y actualización de estado.
   const [ventaSeleccionada, setVentaSeleccionada] = useState(null);
   const [actualizandoEstado, setActualizandoEstado] = useState(false);
 
+  /* =====================================================
+     ACTUALIZACIÓN DEL ESTADO DE UNA VENTA
+     ===================================================== */
+
   const manejarCambioEstado = async (ventaId, nuevoEstado) => {
+    const ventaActual = ventas.find(
+      (venta) => String(venta.id) === String(ventaId)
+    );
+
+    if (!ventaActual) return;
+
+    const estadoActual = normalizarEstado(ventaActual.estado);
+    const transicionesPermitidas =
+      obtenerTransicionesPermitidas(estadoActual);
+
+    if (!transicionesPermitidas.includes(nuevoEstado)) {
+      alert("La transición de estado seleccionada no está permitida.");
+      return;
+    }
+
     try {
       setActualizandoEstado(true);
-      await ventasService.actualizarEstadoVenta(ventaId, nuevoEstado);
+
+      await ventasService.actualizarEstadoVenta(
+        ventaId,
+        nuevoEstado
+      );
 
       setVentas((prev) =>
-        prev.map((v) =>
-          String(v.id) === String(ventaId)
-            ? { ...v, estado: nuevoEstado }
-            : v
+        prev.map((venta) =>
+          String(venta.id) === String(ventaId)
+            ? { ...venta, estado: nuevoEstado }
+            : venta
         )
       );
 
@@ -188,15 +236,21 @@ const Ventas = () => {
         }));
       }
     } catch (err) {
-      console.error("Error al actualizar estado de la venta:", err);
+      console.error(
+        "Error al actualizar el estado de la venta:",
+        err
+      );
+
       alert("No se pudo actualizar el estado de la venta.");
     } finally {
       setActualizandoEstado(false);
     }
   };
 
-  // Carga ventas y clientes para relacionar cada operación
-  // con su correspondiente registro de cliente.
+  /* =====================================================
+     CARGA DE VENTAS Y CLIENTES
+     ===================================================== */
+
   const cargarVentas = async () => {
     setLoading(true);
     setError("");
@@ -224,7 +278,10 @@ const Ventas = () => {
     cargarVentas();
   }, []);
 
-  // Relaciona los clientes por su identificador.
+  /* =====================================================
+     RELACIÓN DE CLIENTES
+     ===================================================== */
+
   const clientesPorId = useMemo(() => {
     return new Map(
       clientes
@@ -233,7 +290,10 @@ const Ventas = () => {
     );
   }, [clientes]);
 
-  // Obtiene los estados que existen realmente en los registros.
+  /* =====================================================
+     ESTADOS DISPONIBLES
+     ===================================================== */
+
   const estadosDisponibles = useMemo(() => {
     const estados = ventas.map((venta) =>
       normalizarEstado(venta.estado)
@@ -244,7 +304,10 @@ const Ventas = () => {
     );
   }, [ventas]);
 
-  // Aplica búsqueda, filtros y ordenamiento.
+  /* =====================================================
+     BÚSQUEDA Y FILTROS
+     ===================================================== */
+
   const ventasFiltradas = useMemo(() => {
     const termino = busqueda.trim().toLocaleLowerCase("es");
 
@@ -259,7 +322,6 @@ const Ventas = () => {
           String(venta.clienteId || "")
         );
 
-        // Búsqueda por código, cliente o correo.
         const textoBusqueda = [
           venta.id,
           venta.clienteId,
@@ -273,13 +335,11 @@ const Ventas = () => {
         const coincideBusqueda =
           !termino || textoBusqueda.includes(termino);
 
-        // Filtro por estado normalizado.
         const estadoVenta = normalizarEstado(venta.estado);
 
         const coincideEstado =
           !filtroEstado || estadoVenta === filtroEstado;
 
-        // Filtros de fecha inclusivos.
         const fechaVenta = obtenerFechaLocal(venta.fecha);
 
         const coincideDesde =
@@ -310,6 +370,40 @@ const Ventas = () => {
     fechaHasta,
   ]);
 
+  // Reiniciar la página al cambiar búsqueda o filtros.
+  useEffect(() => {
+    setPaginaActual(1);
+  }, [
+    busqueda,
+    filtroEstado,
+    fechaDesde,
+    fechaHasta,
+    registrosPorPagina,
+  ]);
+
+  const totalPaginas = Math.max(
+    1,
+    Math.ceil(ventasFiltradas.length / registrosPorPagina)
+  );
+
+  const paginaActualSegura = Math.min(paginaActual, totalPaginas);
+
+  const ventasPaginadas = ventasFiltradas.slice(
+    (paginaActualSegura - 1) * registrosPorPagina,
+    paginaActualSegura * registrosPorPagina
+  );
+
+  // Ajustar la página si la cantidad de ventas cambia.
+  useEffect(() => {
+    if (paginaActual > totalPaginas) {
+      setPaginaActual(totalPaginas);
+    }
+  }, [paginaActual, totalPaginas]);
+
+  /* =====================================================
+     LIMPIEZA DE FILTROS
+     ===================================================== */
+
   const limpiarFiltros = () => {
     setBusqueda("");
     setFiltroEstado("");
@@ -317,25 +411,51 @@ const Ventas = () => {
     setFechaHasta("");
   };
 
+  const hayFiltrosActivos = Boolean(
+    busqueda || filtroEstado || fechaDesde || fechaHasta
+  );
+
+  /* =====================================================
+     INFORMACIÓN DE LA VENTA SELECCIONADA
+     ===================================================== */
+
   const clienteVentaSeleccionada = ventaSeleccionada?.clienteId
     ? clientesPorId.get(String(ventaSeleccionada.clienteId)) || null
     : null;
 
-  const itemsVentaSeleccionada = Array.isArray(ventaSeleccionada?.items)
+  const itemsVentaSeleccionada = Array.isArray(
+    ventaSeleccionada?.items
+  )
     ? ventaSeleccionada.items
     : [];
 
+  const estadoVentaSeleccionada = ventaSeleccionada
+    ? normalizarEstado(ventaSeleccionada.estado)
+    : "";
+
+  const transicionesVentaSeleccionada =
+    obtenerTransicionesPermitidas(estadoVentaSeleccionada);
+
+  /* =====================================================
+     INTERFAZ
+     ===================================================== */
+
   return (
-    <div>
+    <main className="admin-module-page">
       {/* Encabezado */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+      <header className="admin-page-heading">
         <div>
-          <h1 className="text-2xl font-light text-neutral-900 tracking-tight">
+          <p className="admin-page-heading__eyebrow">
+            Operaciones comerciales
+          </p>
+
+          <h1 className="admin-page-heading__title">
             Gestión de ventas
           </h1>
 
-          <p className="text-neutral-500 text-sm mt-1">
-            Consulta y revisa las compras realizadas en Fashion Store.
+          <p className="admin-page-heading__description">
+            Consulta las compras realizadas, revisa sus detalles
+            y administra el estado de cada venta.
           </p>
         </div>
 
@@ -343,47 +463,85 @@ const Ventas = () => {
           type="button"
           onClick={cargarVentas}
           disabled={loading}
-          className="px-4 py-2.5 rounded-xl text-white text-sm font-medium
-                     bg-[#8a5a63] hover:bg-[#754b53] transition-colors
-                     disabled:opacity-60 disabled:cursor-not-allowed"
+          className="admin-secondary-button"
         >
-          {loading ? "Actualizando..." : "↻ Actualizar ventas"}
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M20 7v5h-5M4 17v-5h5"
+            />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M5.6 9a7 7 0 0 1 11.8-2L20 12M4 12l2.6 5a7 7 0 0 0 11.8-2"
+            />
+          </svg>
+
+          {loading ? "Actualizando..." : "Actualizar ventas"}
         </button>
-      </div>
+      </header>
 
       {/* Filtros */}
-      <section className="bg-white rounded-xl border border-stone-200 p-4 mb-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-          <div className="xl:col-span-2">
-            <label className="block text-xs font-medium text-neutral-600 mb-1.5">
-              Buscar venta o cliente
-            </label>
+      <section className="admin-toolbar">
+        <div className="admin-toolbar__search">
+          <label
+            htmlFor="ventas-busqueda"
+            className="admin-form-label"
+          >
+            Buscar venta o cliente
+          </label>
+
+          <div className="admin-search-field">
+            <span className="admin-search-icon">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <circle cx="11" cy="11" r="7" />
+                <path
+                  strokeLinecap="round"
+                  d="m16 16 4 4"
+                />
+              </svg>
+            </span>
 
             <input
+              id="ventas-busqueda"
               type="text"
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Código de venta, nombre o correo..."
-              className="w-full px-4 py-2.5 bg-white border border-stone-200
-                         rounded-xl text-sm text-neutral-800
-                         placeholder-neutral-400 focus:outline-none
-                         focus:border-[#8a5a63] focus:ring-4
-                         focus:ring-[#8a5a63]/10 transition"
+              placeholder="Código, nombre o correo..."
+              className="admin-field-control admin-search-input"
             />
           </div>
+        </div>
 
-          <div>
-            <label className="block text-xs font-medium text-neutral-600 mb-1.5">
+        <div className="admin-toolbar__filters">
+          <div style={{ minWidth: "145px" }}>
+            <label
+              htmlFor="ventas-estado"
+              className="admin-form-label"
+            >
               Estado
             </label>
 
             <select
+              id="ventas-estado"
               value={filtroEstado}
               onChange={(e) => setFiltroEstado(e.target.value)}
-              className="w-full px-3 py-2.5 bg-white border border-stone-200
-                         rounded-xl text-sm text-neutral-700
-                         focus:outline-none focus:border-[#8a5a63]
-                         focus:ring-4 focus:ring-[#8a5a63]/10 transition"
+              className="admin-field-control"
             >
               <option value="">Todos los estados</option>
 
@@ -395,184 +553,210 @@ const Ventas = () => {
             </select>
           </div>
 
-          <div>
-            <label className="block text-xs font-medium text-neutral-600 mb-1.5">
+          <div style={{ minWidth: "145px" }}>
+            <label
+              htmlFor="ventas-fecha-desde"
+              className="admin-form-label"
+            >
               Desde
             </label>
 
             <input
+              id="ventas-fecha-desde"
               type="date"
               value={fechaDesde}
               onChange={(e) => setFechaDesde(e.target.value)}
-              className="w-full px-3 py-2.5 bg-white border border-stone-200
-                         rounded-xl text-sm text-neutral-700
-                         focus:outline-none focus:border-[#8a5a63]
-                         focus:ring-4 focus:ring-[#8a5a63]/10 transition"
+              className="admin-field-control"
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-medium text-neutral-600 mb-1.5">
+          <div style={{ minWidth: "145px" }}>
+            <label
+              htmlFor="ventas-fecha-hasta"
+              className="admin-form-label"
+            >
               Hasta
             </label>
 
             <input
+              id="ventas-fecha-hasta"
               type="date"
               value={fechaHasta}
               onChange={(e) => setFechaHasta(e.target.value)}
               min={fechaDesde || undefined}
-              className="w-full px-3 py-2.5 bg-white border border-stone-200
-                         rounded-xl text-sm text-neutral-700
-                         focus:outline-none focus:border-[#8a5a63]
-                         focus:ring-4 focus:ring-[#8a5a63]/10 transition"
+              className="admin-field-control"
             />
           </div>
 
-          <div className="flex items-end">
+          {hayFiltrosActivos && (
             <button
               type="button"
               onClick={limpiarFiltros}
-              className="px-3 py-2.5 text-sm font-medium text-neutral-600
-                         rounded-xl hover:bg-stone-100 transition-colors"
+              className="admin-clear-filter"
             >
               Limpiar filtros
             </button>
-          </div>
+          )}
         </div>
       </section>
 
-      {/* Mensaje de error */}
+      {/* Error de carga */}
       {error && (
-        <div className="mb-4 bg-rose-50 border border-rose-200
-                        text-rose-800 text-sm rounded-xl p-3.5
-                        flex flex-col sm:flex-row sm:items-center
-                        sm:justify-between gap-3">
-          <span>{error}</span>
+        <div className="admin-alert admin-alert--error" role="alert">
+          <svg
+            width="17"
+            height="17"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <circle cx="12" cy="12" r="9" />
+            <path
+              strokeLinecap="round"
+              d="M12 8v4m0 4h.01"
+            />
+          </svg>
+
+          <span style={{ flex: 1 }}>{error}</span>
 
           <button
             type="button"
             onClick={cargarVentas}
             disabled={loading}
-            className="font-semibold text-rose-700 hover:text-rose-900
-                       disabled:opacity-50"
+            style={{
+              color: "#702d40",
+              fontWeight: 700,
+              whiteSpace: "nowrap",
+              cursor: "pointer",
+            }}
           >
             Reintentar
           </button>
         </div>
       )}
 
-      {/* Resumen del listado */}
-      <div className="flex items-center justify-between gap-3 mb-3">
-        <p className="text-xs text-neutral-500">
-          Mostrando{" "}
-          <span className="font-semibold text-neutral-700">
-            {ventasFiltradas.length}
-          </span>{" "}
-          de {ventas.length} ventas
-        </p>
-      </div>
-
       {/* Tabla de ventas */}
-      <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
+      <section className="admin-table-card">
         {loading ? (
-          <div className="p-8 text-center text-sm text-neutral-500">
+          <div className="admin-loading-state">
+            <div className="admin-spinner" />
             Cargando ventas...
           </div>
         ) : ventasFiltradas.length === 0 ? (
-          <div className="p-8 text-center">
-            <p className="text-sm font-medium text-neutral-700">
+          <div className="admin-empty-state">
+            <p className="admin-empty-state__title">
               {ventas.length === 0
-                ? "Aún no hay ventas registradas."
-                : "No se encontraron ventas con los filtros aplicados."}
+                ? "Aún no hay ventas registradas"
+                : "No se encontraron ventas"}
             </p>
 
-            {ventas.length > 0 && (
-              <p className="text-xs text-neutral-400 mt-1">
-                Prueba modificando los criterios de búsqueda.
-              </p>
-            )}
+            <p>
+              {ventas.length === 0
+                ? "Las compras registradas aparecerán en esta sección."
+                : "Prueba modificando los criterios de búsqueda."}
+            </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[950px] text-sm">
+          <div className="admin-table-scroll">
+            <table className="admin-data-table admin-sales-table">
               <thead>
-                <tr className="bg-stone-50 text-neutral-500 text-left
-                               uppercase text-xs tracking-wider">
-                  <th className="px-5 py-3">Venta</th>
-                  <th className="px-5 py-3">Fecha</th>
-                  <th className="px-5 py-3">Cliente</th>
-                  <th className="px-5 py-3 text-center">Productos</th>
-                  <th className="px-5 py-3 text-right">Total</th>
-                  <th className="px-5 py-3 text-center">Estado</th>
-                  <th className="px-5 py-3 text-center">Acciones</th>
+                <tr>
+                  <th>Venta</th>
+                  <th>Fecha</th>
+                  <th>Cliente</th>
+                  <th style={{ textAlign: "center" }}>Productos</th>
+                  <th style={{ textAlign: "right" }}>Total</th>
+                  <th style={{ textAlign: "center" }}>Estado</th>
+                  <th style={{ textAlign: "right" }}>Acciones</th>
                 </tr>
               </thead>
 
               <tbody>
-                {ventasFiltradas.map((venta, index) => {
+                {ventasPaginadas.map((venta, index) => {
                   const estado = normalizarEstado(venta.estado);
 
                   return (
                     <tr
                       key={venta.id ?? `${venta.fecha}-${index}`}
-                      className="border-t border-stone-100
-                                 hover:bg-stone-50/70 transition-colors"
                     >
-                      <td className="px-5 py-3.5">
-                        <span className="font-semibold text-neutral-800">
+                      <td>
+                        <span className="admin-table-primary-text">
                           #{venta.id || "Sin código"}
                         </span>
                       </td>
 
-                      <td className="px-5 py-3.5 text-neutral-600">
-                        {formatearFecha(venta.fecha)}
-                      </td>
+                      <td>{formatearFecha(venta.fecha)}</td>
 
-                      <td className="px-5 py-3.5">
-                        <span className="font-medium text-neutral-800">
+                      <td>
+                        <span className="admin-table-primary-text">
                           {obtenerNombreCliente(venta, clientesPorId)}
                         </span>
 
                         {clientesPorId.get(
                           String(venta.clienteId || "")
                         )?.email && (
-                          <p className="text-xs text-neutral-400 mt-0.5">
+                          <span className="admin-table-secondary-text">
                             {
                               clientesPorId.get(
                                 String(venta.clienteId)
                               ).email
                             }
-                          </p>
+                          </span>
                         )}
                       </td>
 
-                      <td className="px-5 py-3.5 text-center text-neutral-600">
+                      <td style={{ textAlign: "center" }}>
                         {obtenerCantidadProductos(venta)}
                       </td>
 
-                      <td className="px-5 py-3.5 text-right font-semibold text-neutral-800">
+                      <td
+                        style={{
+                          textAlign: "right",
+                          color: "#292522",
+                          fontWeight: 700,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
                         {formatearMoneda(venta.total)}
                       </td>
 
-                      <td className="px-5 py-3.5 text-center">
+                      <td style={{ textAlign: "center" }}>
                         <span
-                          className={`inline-flex items-center px-2.5 py-1
-                                      rounded-full border text-xs font-medium
-                                      ${obtenerClaseEstado(estado)}`}
+                          className={`admin-pill ${obtenerClaseEstado(
+                            estado
+                          )}`}
                         >
                           {estado}
                         </span>
                       </td>
 
-                      <td className="px-5 py-3.5 text-center">
-                        <button
-                          type="button"
-                          onClick={() => setVentaSeleccionada(venta)}
-                          className="text-[#8a5a63] hover:text-[#754b53]
-                                    font-semibold text-xs transition-colors"
-                        >
-                          Ver detalle
-                        </button>
+                      <td>
+                        <div className="admin-row-actions">
+                          <button
+                            type="button"
+                            onClick={() => setVentaSeleccionada(venta)}
+                            title="Ver detalle de venta"
+                            aria-label={`Ver detalle de la venta ${venta.id}`}
+                            className="admin-row-action"
+                          >
+                            <svg
+                              width="17"
+                              height="17"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M2.5 12s3.5-7 9.5-7 9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7Z"
+                              />
+                              <circle cx="12" cy="12" r="3" />
+                            </svg>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -581,137 +765,226 @@ const Ventas = () => {
             </table>
           </div>
         )}
-      </div>
+      </section>
 
-      {/* Modal de detalle de venta */}
+      {!loading && ventasFiltradas.length > 0 && (
+        <AdminPagination
+          currentPage={paginaActualSegura}
+          totalItems={ventasFiltradas.length}
+          pageSize={registrosPorPagina}
+          onPageChange={setPaginaActual}
+          onPageSizeChange={(cantidad) => {
+            setRegistrosPorPagina(cantidad);
+            setPaginaActual(1);
+          }}
+        />
+      )}
+
+      {/* =================================================
+          MODAL DE DETALLE DE VENTA
+          ================================================= */}
+
       {ventaSeleccionada && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center
-                     p-4 bg-black/45 backdrop-blur-xs"
-          onClick={() => setVentaSeleccionada(null)}
-        >
-          <div
-            className="bg-white rounded-2xl shadow-2xl border border-stone-200
-                       w-full max-w-3xl max-h-[90vh] overflow-y-auto"
+        <div className="admin-modal-overlay">
+          <section
+            className="admin-modal-card admin-modal-card--wide"
             role="dialog"
             aria-modal="true"
             aria-labelledby="detalle-venta-titulo"
-            onClick={(e) => e.stopPropagation()}
           >
             {/* Encabezado */}
-            <div className="px-6 py-5 border-b border-stone-100
-                            flex items-start justify-between gap-4"
-            >
+            <header className="admin-modal-header">
               <div>
+                <p className="admin-modal-header__eyebrow">
+                  Información de la operación
+                </p>
+
                 <h2
                   id="detalle-venta-titulo"
-                  className="text-xl font-semibold text-neutral-900"
+                  className="admin-modal-header__title"
                 >
                   Detalle de venta
                 </h2>
-
-                <p className="text-sm text-neutral-500 mt-1">
-                  Información completa de la operación.
-                </p>
               </div>
 
               <button
                 type="button"
                 onClick={() => setVentaSeleccionada(null)}
                 aria-label="Cerrar detalle"
-                className="w-9 h-9 rounded-lg flex items-center
-                           justify-center text-neutral-500
-                           hover:bg-stone-100 hover:text-neutral-900
-                           transition-colors text-xl"
+                className="admin-modal-close"
               >
-                ×
+                <svg
+                  width="17"
+                  height="17"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
               </button>
-            </div>
+            </header>
 
-            <div className="p-6 space-y-6">
+            <div
+              className="admin-modal-body"
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "17px",
+              }}
+            >
               {/* Información general */}
-              <section>
-                <div className="flex flex-col sm:flex-row
-                                sm:items-center sm:justify-between gap-3"
+              <section className="admin-detail-section">
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "15px",
+                  }}
                 >
                   <div>
-                    <p className="text-xs text-neutral-500 mb-1">
+                    <p className="admin-detail-info__label">
                       Código de venta
                     </p>
 
-                    <p className="text-lg font-bold text-neutral-900">
+                    <p
+                      style={{
+                        marginTop: "5px",
+                        color: "#292522",
+                        fontSize: "20px",
+                        fontWeight: 700,
+                      }}
+                    >
                       #{ventaSeleccionada.id || "Sin código"}
                     </p>
                   </div>
 
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                    <span className="text-xs text-neutral-500 font-medium">
-                      Cambiar estado:
-                    </span>
-                    <select
-                      value={normalizarEstado(ventaSeleccionada.estado)}
-                      onChange={(e) =>
-                        manejarCambioEstado(
-                          ventaSeleccionada.id,
-                          e.target.value
-                        )
-                      }
-                      disabled={actualizandoEstado}
-                      className={`text-xs font-semibold px-3 py-1.5 rounded-full border cursor-pointer transition focus:outline-none focus:ring-2 focus:ring-[#8a5a63] disabled:opacity-50 ${obtenerClaseEstado(
-                        normalizarEstado(ventaSeleccionada.estado)
-                      )}`}
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "6px",
+                      minWidth: "165px",
+                    }}
+                  >
+                    <label
+                      htmlFor="venta-cambiar-estado"
+                      className="admin-form-label"
                     >
-                      <option value="Pendiente">Pendiente</option>
-                      <option value="En preparación">En preparación</option>
-                      <option value="Enviado">Enviado</option>
-                      <option value="Entregado">Entregado</option>
-                      <option value="Cancelado">Cancelado</option>
-                    </select>
+                      Cambiar estado
+                    </label>
+
+                    {transicionesVentaSeleccionada.length > 0 ? (
+                      <select
+                        id="venta-cambiar-estado"
+                        value={estadoVentaSeleccionada}
+                        onChange={(e) =>
+                          manejarCambioEstado(
+                            ventaSeleccionada.id,
+                            e.target.value
+                          )
+                        }
+                        disabled={actualizandoEstado}
+                        className="admin-field-control admin-detail-status-select"
+                      >
+                        <option value={estadoVentaSeleccionada}>
+                          {estadoVentaSeleccionada}
+                        </option>
+
+                        {transicionesVentaSeleccionada.map((estado) => (
+                          <option key={estado} value={estado}>
+                            {estado}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div>
+                        <span
+                          className={`admin-pill ${obtenerClaseEstado(
+                            estadoVentaSeleccionada
+                          )}`}
+                        >
+                          {estadoVentaSeleccionada}
+                        </span>
+
+                        <p
+                          style={{
+                            marginTop: "6px",
+                            color: "#827970",
+                            fontSize: "10px",
+                          }}
+                        >
+                          {["Completado", "Cancelado"].includes(
+                            estadoVentaSeleccionada
+                          )
+                            ? "Este es un estado final. No permite más cambios."
+                            : "Estado de un registro histórico. No permite cambios."}
+                        </p>
+                      </div>
+                    )}
+
+                    {actualizandoEstado && (
+                      <span
+                        style={{
+                          color: "#827970",
+                          fontSize: "10px",
+                        }}
+                      >
+                        Actualizando estado...
+                      </span>
+                    )}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-5">
-                  <div className="bg-stone-50 rounded-xl p-4">
-                    <p className="text-xs text-neutral-500">
+                <div className="admin-detail-grid" style={{ marginTop: "15px" }}>
+                  <div className="admin-detail-info">
+                    <p className="admin-detail-info__label">
                       Fecha de compra
                     </p>
 
-                    <p className="text-sm font-medium text-neutral-800 mt-1">
+                    <p className="admin-detail-info__value">
                       {formatearFecha(ventaSeleccionada.fecha)}
                     </p>
                   </div>
 
-                  <div className="bg-stone-50 rounded-xl p-4">
-                    <p className="text-xs text-neutral-500">
+                  <div className="admin-detail-info">
+                    <p className="admin-detail-info__label">
                       Cantidad de productos
                     </p>
 
-                    <p className="text-sm font-medium text-neutral-800 mt-1">
+                    <p className="admin-detail-info__value">
                       {obtenerCantidadProductos(ventaSeleccionada)} unidades
                     </p>
                   </div>
                 </div>
               </section>
 
-              {/* Datos del cliente */}
-              <section>
-                <div className="mb-3">
-                  <h3 className="text-sm font-semibold text-neutral-900">
+              {/* Información del cliente */}
+              <section className="admin-detail-section">
+                <div className="admin-detail-section__heading">
+                  <h3 className="admin-detail-section__title">
                     Información del cliente
                   </h3>
 
-                  <p className="text-xs text-neutral-500 mt-0.5">
+                  <p className="admin-detail-section__description">
                     Datos asociados a la compra.
                   </p>
                 </div>
 
-                <div className="border border-stone-200 rounded-xl p-4">
-                  <div className="mb-4">
-                    <p className="text-xs text-neutral-500">
+                <div className="admin-detail-grid">
+                  <div className="admin-detail-info">
+                    <p className="admin-detail-info__label">
                       Nombre completo
                     </p>
 
-                    <p className="text-sm font-semibold text-neutral-800 mt-1">
+                    <p className="admin-detail-info__value">
                       {obtenerNombreCliente(
                         ventaSeleccionada,
                         clientesPorId
@@ -719,83 +992,84 @@ const Ventas = () => {
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-xs text-neutral-500">
-                        Correo electrónico
-                      </p>
+                  <div className="admin-detail-info">
+                    <p className="admin-detail-info__label">
+                      Correo electrónico
+                    </p>
 
-                      <p className="text-sm text-neutral-700 mt-1 break-all">
-                        {clienteVentaSeleccionada?.email || "No registrado"}
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="text-xs text-neutral-500">
-                        Teléfono
-                      </p>
-
-                      <p className="text-sm text-neutral-700 mt-1">
-                        {clienteVentaSeleccionada?.telefono || "No registrado"}
-                      </p>
-                    </div>
-
-                    <div className="sm:col-span-2">
-                      <p className="text-xs text-neutral-500">
-                        Dirección
-                      </p>
-
-                      <p className="text-sm text-neutral-700 mt-1">
-                        {clienteVentaSeleccionada?.direccion || "No registrada"}
-                      </p>
-                    </div>
+                    <p className="admin-detail-info__value">
+                      {clienteVentaSeleccionada?.email || "No registrado"}
+                    </p>
                   </div>
 
-                  {!clienteVentaSeleccionada && (
-                    <p className="text-xs text-amber-700 mt-3
-                                  bg-amber-50 border border-amber-100
-                                  rounded-lg p-2.5"
-                    >
-                      No se encontró el registro del cliente relacionado
-                      con esta venta.
+                  <div className="admin-detail-info">
+                    <p className="admin-detail-info__label">
+                      Teléfono
                     </p>
-                  )}
+
+                    <p className="admin-detail-info__value">
+                      {clienteVentaSeleccionada?.telefono || "No registrado"}
+                    </p>
+                  </div>
+
+                  <div className="admin-detail-info">
+                    <p className="admin-detail-info__label">
+                      Dirección
+                    </p>
+
+                    <p className="admin-detail-info__value">
+                      {clienteVentaSeleccionada?.direccion || "No registrada"}
+                    </p>
+                  </div>
                 </div>
+
+                {!clienteVentaSeleccionada && (
+                  <div
+                    className="admin-alert"
+                    style={{
+                      marginTop: "12px",
+                      marginBottom: 0,
+                      color: "#906a2e",
+                      background: "#faf3e7",
+                      borderColor: "#ecdfc6",
+                    }}
+                  >
+                    No se encontró el registro del cliente relacionado
+                    con esta venta.
+                  </div>
+                )}
               </section>
 
               {/* Productos adquiridos */}
-              <section>
-                <div className="mb-3">
-                  <h3 className="text-sm font-semibold text-neutral-900">
+              <section className="admin-detail-section">
+                <div className="admin-detail-section__heading">
+                  <h3 className="admin-detail-section__title">
                     Productos adquiridos
                   </h3>
 
-                  <p className="text-xs text-neutral-500 mt-0.5">
+                  <p className="admin-detail-section__description">
                     Detalle de los artículos incluidos en la operación.
                   </p>
                 </div>
 
-                <div className="border border-stone-200 rounded-xl overflow-hidden">
+                <div className="admin-table-card">
                   {itemsVentaSeleccionada.length === 0 ? (
-                    <p className="p-5 text-sm text-neutral-500 text-center">
+                    <div className="admin-empty-state">
                       Esta venta no tiene productos registrados.
-                    </p>
+                    </div>
                   ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full min-w-[520px] text-sm">
+                    <div className="admin-table-scroll">
+                      <table className="admin-data-table admin-detail-items-table">
                         <thead>
-                          <tr className="bg-stone-50 text-neutral-500
-                                         text-xs uppercase tracking-wider
-                                         text-left"
-                          >
-                            <th className="px-4 py-3">Producto</th>
-                            <th className="px-4 py-3 text-center">
+                          <tr>
+                            <th>Producto</th>
+                            <th style={{ textAlign: "center" }}>
                               Cantidad
                             </th>
-                            <th className="px-4 py-3 text-right">
+                            <th style={{ textAlign: "right" }}>
                               Precio unitario
                             </th>
-                            <th className="px-4 py-3 text-right">
+                            <th style={{ textAlign: "right" }}>
                               Subtotal
                             </th>
                           </tr>
@@ -805,29 +1079,36 @@ const Ventas = () => {
                           {itemsVentaSeleccionada.map((item, index) => (
                             <tr
                               key={`${item.productoId || "producto"}-${index}`}
-                              className="border-t border-stone-100"
                             >
-                              <td className="px-4 py-3 text-neutral-800
-                                             font-medium"
-                              >
-                                {item.nombre ||
-                                  `Producto ${item.productoId || index + 1}`}
+                              <td>
+                                <span className="admin-table-primary-text">
+                                  {item.nombre ||
+                                    `Producto ${
+                                      item.productoId || index + 1
+                                    }`}
+                                </span>
                               </td>
 
-                              <td className="px-4 py-3 text-center
-                                             text-neutral-600"
-                              >
+                              <td style={{ textAlign: "center" }}>
                                 {Number(item.cantidad) || 0}
                               </td>
 
-                              <td className="px-4 py-3 text-right
-                                             text-neutral-600"
+                              <td
+                                style={{
+                                  textAlign: "right",
+                                  whiteSpace: "nowrap",
+                                }}
                               >
                                 {formatearMoneda(item.precioUnitario)}
                               </td>
 
-                              <td className="px-4 py-3 text-right
-                                             font-medium text-neutral-800"
+                              <td
+                                style={{
+                                  textAlign: "right",
+                                  color: "#292522",
+                                  fontWeight: 700,
+                                  whiteSpace: "nowrap",
+                                }}
                               >
                                 {formatearMoneda(
                                   obtenerSubtotalItem(item)
@@ -842,41 +1123,32 @@ const Ventas = () => {
                 </div>
               </section>
 
-              {/* Total */}
-              <section className="bg-stone-50 border border-stone-200
-                                  rounded-xl p-5"
-              >
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-sm font-medium text-neutral-600">
-                    Total de la venta
-                  </span>
+              {/* Total de la venta */}
+              <section className="admin-detail-total">
+                <span className="admin-detail-total__label">
+                  Total de la venta
+                </span>
 
-                  <span className="text-xl font-bold text-[#8a5a63]">
-                    {formatearMoneda(ventaSeleccionada.total)}
-                  </span>
-                </div>
+                <span className="admin-detail-total__value">
+                  {formatearMoneda(ventaSeleccionada.total)}
+                </span>
               </section>
             </div>
 
-            {/* Pie */}
-            <div className="px-6 py-4 border-t border-stone-100
-                            flex justify-end"
-            >
+            {/* Pie del modal */}
+            <footer className="admin-detail-footer">
               <button
                 type="button"
                 onClick={() => setVentaSeleccionada(null)}
-                className="px-5 py-2.5 rounded-xl text-sm font-medium
-                           text-neutral-700 bg-stone-100
-                           hover:bg-stone-200 transition-colors"
+                className="admin-secondary-button"
               >
                 Cerrar
               </button>
-            </div>
-          </div>
+            </footer>
+          </section>
         </div>
       )}
-
-    </div>
+    </main>
   );
 };
 

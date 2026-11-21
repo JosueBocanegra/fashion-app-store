@@ -1,5 +1,8 @@
+
 import { useEffect, useState } from "react";
 import { clientesService } from "../services/clientesService";
+import AdminPagination from "../components/AdminPagination";
+import "../styles/modulos.css";
 
 const initialForm = {
   nombre: "",
@@ -20,9 +23,23 @@ const Clientes = () => {
   const [guardando, setGuardando] = useState(false);
   const [busqueda, setBusqueda] = useState("");
 
+  // Estados para la confirmación de eliminación.
+  const [clienteAEliminar, setClienteAEliminar] = useState(null);
+  const [eliminando, setEliminando] = useState(false);
+  const [errorEliminar, setErrorEliminar] = useState("");
+
+  // Paginación.
+  const [paginaActual, setPaginaActual] = useState(1);
+  const [registrosPorPagina, setRegistrosPorPagina] = useState(10);
+
+  /* =====================================================
+     CARGA DE CLIENTES
+     ===================================================== */
+
   const cargarClientes = async () => {
     setLoading(true);
     setError("");
+
     try {
       const data = await clientesService.obtenerClientes();
       setClientes(data);
@@ -37,6 +54,10 @@ const Clientes = () => {
     cargarClientes();
   }, []);
 
+  /* =====================================================
+     REGISTRO Y EDICIÓN
+     ===================================================== */
+
   const abrirNuevo = () => {
     setEditando(null);
     setForm(initialForm);
@@ -45,6 +66,7 @@ const Clientes = () => {
 
   const abrirEditar = (cliente) => {
     setEditando(cliente.id);
+
     setForm({
       nombre: cliente.nombre || "",
       apellido: cliente.apellido || "",
@@ -53,6 +75,7 @@ const Clientes = () => {
       dni: cliente.dni || "",
       direccion: cliente.direccion || "",
     });
+
     setModalOpen(true);
   };
 
@@ -63,19 +86,27 @@ const Clientes = () => {
   };
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    setForm({
+      ...form,
+      [e.target.name]: e.target.value,
+    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!form.nombre.trim() || !form.apellido.trim() || !form.email.trim()) {
+    if (
+      !form.nombre.trim() ||
+      !form.apellido.trim() ||
+      !form.email.trim()
+    ) {
       setError("Nombre, apellido y correo son obligatorios.");
       return;
     }
 
     setGuardando(true);
     setError("");
+
     try {
       if (editando) {
         await clientesService.actualizarCliente(editando, form);
@@ -85,6 +116,7 @@ const Clientes = () => {
           fechaRegistro: new Date().toISOString(),
         });
       }
+
       await cargarClientes();
       cerrarModal();
     } catch (err) {
@@ -94,219 +126,653 @@ const Clientes = () => {
     }
   };
 
-  const handleEliminar = async (cliente) => {
-    const confirmar = window.confirm(
-      `¿Eliminar a ${cliente.nombre} ${cliente.apellido}? Esta acción no se puede deshacer.`
-    );
-    if (!confirmar) return;
+  /* =====================================================
+     ELIMINACIÓN DE CLIENTES
+     ===================================================== */
+
+  const abrirModalEliminar = (cliente) => {
+    setErrorEliminar("");
+    setClienteAEliminar(cliente);
+  };
+
+  const cerrarModalEliminar = () => {
+    if (eliminando) return;
+
+    setClienteAEliminar(null);
+    setErrorEliminar("");
+  };
+
+  const confirmarEliminar = async () => {
+    if (!clienteAEliminar) return;
+
+    setEliminando(true);
+    setErrorEliminar("");
 
     try {
-      await clientesService.eliminarCliente(cliente.id);
-      setClientes((prev) => prev.filter((c) => c.id !== cliente.id));
+      await clientesService.eliminarCliente(clienteAEliminar.id);
+
+      setClientes((prev) =>
+        prev.filter((c) => c.id !== clienteAEliminar.id)
+      );
+
+      setClienteAEliminar(null);
     } catch (err) {
-      setError("No se pudo eliminar el cliente.");
+      setErrorEliminar(
+        "No se pudo eliminar el cliente. Intenta nuevamente."
+      );
+    } finally {
+      setEliminando(false);
     }
   };
 
+  /* =====================================================
+     BÚSQUEDA Y PAGINACIÓN
+     ===================================================== */
+
   const clientesFiltrados = clientes.filter((c) => {
-    const texto = `${c.nombre} ${c.apellido} ${c.email} ${c.dni}`.toLowerCase();
+    const texto =
+      `${c.nombre} ${c.apellido} ${c.email} ${c.dni}`.toLowerCase();
+
     return texto.includes(busqueda.toLowerCase());
   });
 
+  // Reiniciar la página cuando cambia la búsqueda o la cantidad.
+  useEffect(() => {
+    setPaginaActual(1);
+  }, [busqueda, registrosPorPagina]);
+
+  const totalPaginas = Math.max(
+    1,
+    Math.ceil(clientesFiltrados.length / registrosPorPagina)
+  );
+
+  const paginaActualSegura = Math.min(paginaActual, totalPaginas);
+
+  const clientesPaginados = clientesFiltrados.slice(
+    (paginaActualSegura - 1) * registrosPorPagina,
+    paginaActualSegura * registrosPorPagina
+  );
+
+  // Ajustar la página si se elimina un cliente de la última página.
+  useEffect(() => {
+    if (paginaActual > totalPaginas) {
+      setPaginaActual(totalPaginas);
+    }
+  }, [paginaActual, totalPaginas]);
+
+  /* =====================================================
+     INTERFAZ
+     ===================================================== */
+
   return (
-    <div>
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+    <main className="admin-module-page">
+      {/* Encabezado */}
+      <header className="admin-page-heading">
         <div>
-          <h1 className="text-2xl font-light text-neutral-900 tracking-tight">
+          <p className="admin-page-heading__eyebrow">
+            Gestión de usuarios
+          </p>
+
+          <h1 className="admin-page-heading__title">
             Gestión de clientes
           </h1>
-          <p className="text-neutral-500 text-sm mt-1">
-            Administra los clientes registrados en Fashion Store.
+
+          <p className="admin-page-heading__description">
+            Administra la información y los datos de los clientes
+            registrados en Fashion Store.
           </p>
         </div>
+
         <button
+          type="button"
           onClick={abrirNuevo}
-          className="px-4 py-2.5 rounded-xl text-white text-sm font-medium bg-[#8a5a63] hover:bg-[#754b53] transition-colors"
+          className="admin-primary-button"
         >
-          + Nuevo cliente
+          <svg
+            width="17"
+            height="17"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 5v14M5 12h14"
+            />
+          </svg>
+
+          Nuevo cliente
         </button>
-      </div>
+      </header>
 
-      <div className="mb-4">
-        <input
-          type="text"
-          placeholder="Buscar por nombre, correo o DNI..."
-          value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
-          className="w-full sm:w-80 px-4 py-2.5 bg-white border border-stone-200 rounded-xl text-sm text-neutral-800 placeholder-neutral-400 focus:outline-none focus:border-[#8a5a63] focus:ring-4 focus:ring-[#8a5a63]/10 transition"
-        />
-      </div>
+      {/* Resumen de clientes */}
+      <section
+        className="admin-stat-grid"
+        style={{
+          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+        }}
+      >
+        <div className="admin-stat-card">
+          <p className="admin-stat-card__label">
+            Clientes registrados
+          </p>
 
+          <p className="admin-stat-card__value">
+            {clientes.length}
+          </p>
+
+          <p className="admin-stat-card__note">
+            Total de clientes en el sistema
+          </p>
+        </div>
+      </section>
+
+      {/* Mensaje de error general */}
       {error && (
-        <div className="mb-4 bg-rose-50 border border-rose-200 text-rose-800 text-sm rounded-xl p-3.5">
-          {error}
+        <div className="admin-alert admin-alert--error" role="alert">
+          <svg
+            width="17"
+            height="17"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <circle cx="12" cy="12" r="9" />
+            <path
+              strokeLinecap="round"
+              d="M12 8v4m0 4h.01"
+            />
+          </svg>
+
+          <span>{error}</span>
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
-        {loading ? (
-          <p className="p-6 text-sm text-neutral-500">Cargando clientes...</p>
-        ) : clientesFiltrados.length === 0 ? (
-          <p className="p-6 text-sm text-neutral-500">
-            No hay clientes registrados todavía.
-          </p>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-stone-50 text-neutral-500 text-left uppercase text-xs tracking-wider">
-                <th className="px-5 py-3">Nombre</th>
-                <th className="px-5 py-3">Correo</th>
-                <th className="px-5 py-3">Teléfono</th>
-                <th className="px-5 py-3">DNI</th>
-                <th className="px-5 py-3 text-right">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {clientesFiltrados.map((cliente) => (
-                <tr key={cliente.id} className="border-t border-stone-100">
-                  <td className="px-5 py-3 text-neutral-800">
-                    {cliente.nombre} {cliente.apellido}
-                  </td>
-                  <td className="px-5 py-3 text-neutral-600">{cliente.email}</td>
-                  <td className="px-5 py-3 text-neutral-600">
-                    {cliente.telefono || "—"}
-                  </td>
-                  <td className="px-5 py-3 text-neutral-600">{cliente.dni || "—"}</td>
-                  <td className="px-5 py-3 text-right space-x-3">
-                    <button
-                      onClick={() => abrirEditar(cliente)}
-                      className="text-[#8a5a63] hover:text-[#754b53] font-medium"
-                    >
-                      Editar
-                    </button>
-                    <button
-                      onClick={() => handleEliminar(cliente)}
-                      className="text-rose-600 hover:text-rose-800 font-medium"
-                    >
-                      Eliminar
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* Búsqueda */}
+      <section className="admin-toolbar">
+        <div className="admin-toolbar__search">
+          <span className="admin-search-icon">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <circle cx="11" cy="11" r="7" />
+              <path
+                strokeLinecap="round"
+                d="m16 16 4 4"
+              />
+            </svg>
+          </span>
+
+          <input
+            type="text"
+            placeholder="Buscar por nombre, correo o DNI..."
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            className="admin-field-control admin-search-input"
+          />
+        </div>
+
+        {busqueda && (
+          <button
+            type="button"
+            onClick={() => setBusqueda("")}
+            className="admin-clear-filter"
+          >
+            Limpiar búsqueda
+          </button>
         )}
-      </div>
+      </section>
 
+      {/* Tabla de clientes */}
+      <section className="admin-table-card">
+        {loading ? (
+          <div className="admin-loading-state">
+            <div className="admin-spinner" />
+            Cargando clientes...
+          </div>
+        ) : clientesFiltrados.length === 0 ? (
+          <div className="admin-empty-state">
+            <p className="admin-empty-state__title">
+              No se encontraron clientes
+            </p>
+
+            <p>
+              No hay clientes registrados todavía o no coinciden con
+              la búsqueda.
+            </p>
+          </div>
+        ) : (
+          <div className="admin-table-scroll">
+            <table className="admin-data-table">
+              <thead>
+                <tr>
+                  <th>Cliente</th>
+                  <th>Correo electrónico</th>
+                  <th>Teléfono</th>
+                  <th>DNI</th>
+                  <th style={{ textAlign: "right" }}>Acciones</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {clientesPaginados.map((cliente) => (
+                  <tr key={cliente.id}>
+                    <td>
+                      <p className="admin-table-primary-text">
+                        {cliente.nombre} {cliente.apellido}
+                      </p>
+
+                      <span className="admin-table-secondary-text">
+                        Cliente registrado
+                      </span>
+                    </td>
+
+                    <td>{cliente.email || "—"}</td>
+
+                    <td>{cliente.telefono || "—"}</td>
+
+                    <td>{cliente.dni || "—"}</td>
+
+                    <td>
+                      <div className="admin-row-actions">
+                        {/* Editar */}
+                        <button
+                          type="button"
+                          onClick={() => abrirEditar(cliente)}
+                          title="Editar cliente"
+                          aria-label={`Editar a ${cliente.nombre} ${cliente.apellido}`}
+                          className="admin-row-action"
+                        >
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="m15 5 4 4M4 20l4.5-1 11-11a2.8 2.8 0 0 0-4-4l-11 11L4 20Z"
+                            />
+                          </svg>
+                        </button>
+
+                        {/* Eliminar */}
+                        <button
+                          type="button"
+                          onClick={() => abrirModalEliminar(cliente)}
+                          title="Eliminar cliente"
+                          aria-label={`Eliminar a ${cliente.nombre} ${cliente.apellido}`}
+                          className="admin-row-action admin-row-action--danger"
+                        >
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M4 7h16M10 11v6m4-6v6M5 7l1 14h12l1-14M9 7V4h6v3"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      {!loading && clientesFiltrados.length > 0 && (
+        <AdminPagination
+          currentPage={paginaActualSegura}
+          totalItems={clientesFiltrados.length}
+          pageSize={registrosPorPagina}
+          onPageChange={setPaginaActual}
+          onPageSizeChange={(cantidad) => {
+            setRegistrosPorPagina(cantidad);
+            setPaginaActual(1);
+          }}
+        />
+      )}
+
+      {/* Modal de registro y edición */}
       {modalOpen && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl w-full max-w-md p-6">
-            <h2 className="text-lg font-medium text-neutral-900 mb-4">
-              {editando ? "Editar cliente" : "Nuevo cliente"}
-            </h2>
+        <div className="admin-modal-overlay">
+          <section
+            className="admin-modal-card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="cliente-modal-title"
+          >
+            <header className="admin-modal-header">
+              <div>
+                <p className="admin-modal-header__eyebrow">
+                  {editando ? "Actualización" : "Nuevo registro"}
+                </p>
 
-            <form onSubmit={handleSubmit} className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-neutral-600 mb-1">
-                    Nombre
+                <h2
+                  id="cliente-modal-title"
+                  className="admin-modal-header__title"
+                >
+                  {editando ? "Editar cliente" : "Registrar nuevo cliente"}
+                </h2>
+              </div>
+
+              <button
+                type="button"
+                onClick={cerrarModal}
+                className="admin-modal-close"
+                aria-label="Cerrar formulario"
+              >
+                <svg
+                  width="17"
+                  height="17"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </header>
+
+            <form onSubmit={handleSubmit} className="admin-modal-body">
+              <div className="admin-form-grid">
+                <div className="admin-form-field">
+                  <label className="admin-form-label">
+                    Nombre *
                   </label>
+
                   <input
+                    type="text"
                     name="nombre"
                     value={form.nombre}
                     onChange={handleChange}
                     required
-                    className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:border-[#8a5a63] focus:ring-2 focus:ring-[#8a5a63]/10"
+                    placeholder="Nombre del cliente"
+                    className="admin-field-control"
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-neutral-600 mb-1">
-                    Apellido
+
+                <div className="admin-form-field">
+                  <label className="admin-form-label">
+                    Apellido *
                   </label>
+
                   <input
+                    type="text"
                     name="apellido"
                     value={form.apellido}
                     onChange={handleChange}
                     required
-                    className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:border-[#8a5a63] focus:ring-2 focus:ring-[#8a5a63]/10"
+                    placeholder="Apellido del cliente"
+                    className="admin-field-control"
                   />
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-xs font-medium text-neutral-600 mb-1">
-                  Correo electrónico
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  value={form.email}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:border-[#8a5a63] focus:ring-2 focus:ring-[#8a5a63]/10"
-                />
-              </div>
+                <div className="admin-form-field admin-form-field--full">
+                  <label className="admin-form-label">
+                    Correo electrónico *
+                  </label>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-neutral-600 mb-1">
+                  <input
+                    type="email"
+                    name="email"
+                    value={form.email}
+                    onChange={handleChange}
+                    required
+                    placeholder="correo@ejemplo.com"
+                    className="admin-field-control"
+                  />
+                </div>
+
+                <div className="admin-form-field">
+                  <label className="admin-form-label">
                     Teléfono
                   </label>
+
                   <input
+                    type="text"
                     name="telefono"
                     value={form.telefono}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:border-[#8a5a63] focus:ring-2 focus:ring-[#8a5a63]/10"
+                    placeholder="Número de teléfono"
+                    className="admin-field-control"
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-neutral-600 mb-1">
+
+                <div className="admin-form-field">
+                  <label className="admin-form-label">
                     DNI
                   </label>
+
                   <input
+                    type="text"
                     name="dni"
                     value={form.dni}
                     onChange={handleChange}
                     maxLength={8}
-                    className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:border-[#8a5a63] focus:ring-2 focus:ring-[#8a5a63]/10"
+                    placeholder="Número de DNI"
+                    className="admin-field-control"
+                  />
+                </div>
+
+                <div className="admin-form-field admin-form-field--full">
+                  <label className="admin-form-label">
+                    Dirección
+                  </label>
+
+                  <input
+                    type="text"
+                    name="direccion"
+                    value={form.direccion}
+                    onChange={handleChange}
+                    placeholder="Dirección del cliente"
+                    className="admin-field-control"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-medium text-neutral-600 mb-1">
-                  Dirección
-                </label>
-                <input
-                  name="direccion"
-                  value={form.direccion}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:border-[#8a5a63] focus:ring-2 focus:ring-[#8a5a63]/10"
-                />
-              </div>
-
-              <div className="flex justify-end gap-3 pt-3">
+              <div className="admin-modal-actions">
                 <button
                   type="button"
                   onClick={cerrarModal}
-                  className="px-4 py-2 rounded-lg text-sm text-neutral-600 hover:bg-stone-100"
+                  className="admin-secondary-button"
                 >
                   Cancelar
                 </button>
+
                 <button
                   type="submit"
                   disabled={guardando}
-                  className="px-4 py-2 rounded-lg text-sm text-white bg-[#8a5a63] hover:bg-[#754b53] disabled:opacity-60"
+                  className="admin-primary-button"
                 >
-                  {guardando ? "Guardando..." : "Guardar"}
+                  {guardando ? "Guardando..." : "Guardar cliente"}
                 </button>
               </div>
             </form>
-          </div>
+          </section>
         </div>
       )}
-    </div>
+
+      {/* Modal de confirmación de eliminación */}
+      {clienteAEliminar && (
+        <div className="admin-modal-overlay">
+          <section
+            className="admin-modal-card admin-modal-card--small"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="cliente-delete-title"
+          >
+            <div className="admin-modal-body">
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  marginBottom: "15px",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "53px",
+                    height: "53px",
+                    color: "#a33f49",
+                    background: "#fbefef",
+                    border: "1px solid #f0dddd",
+                    borderRadius: "15px",
+                  }}
+                >
+                  <svg
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M4 7h16M10 11v6m4-6v6M5 7l1 14h12l1-14M9 7V4h6v3"
+                    />
+                  </svg>
+                </div>
+              </div>
+
+              <h2
+                id="cliente-delete-title"
+                style={{
+                  color: "#292522",
+                  fontSize: "19px",
+                  fontWeight: 700,
+                  textAlign: "center",
+                }}
+              >
+                ¿Eliminar este cliente?
+              </h2>
+
+              <p
+                style={{
+                  marginTop: "7px",
+                  color: "#827970",
+                  fontSize: "12px",
+                  lineHeight: 1.6,
+                  textAlign: "center",
+                }}
+              >
+                Esta acción no se puede deshacer. El cliente será
+                eliminado permanentemente del registro.
+              </p>
+
+              <div className="admin-delete-preview">
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    width: "48px",
+                    height: "48px",
+                    color: "#702d40",
+                    background: "#f3e7e9",
+                    borderRadius: "10px",
+                    fontSize: "16px",
+                    fontWeight: 700,
+                  }}
+                >
+                  {clienteAEliminar.nombre?.charAt(0)?.toUpperCase() || "C"}
+                </div>
+
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <p className="admin-table-primary-text">
+                    {clienteAEliminar.nombre} {clienteAEliminar.apellido}
+                  </p>
+
+                  <p className="admin-table-secondary-text">
+                    {clienteAEliminar.email || "Sin correo registrado"}
+                  </p>
+
+                  <p
+                    style={{
+                      marginTop: "5px",
+                      color: "#827970",
+                      fontSize: "11px",
+                    }}
+                  >
+                    DNI: {clienteAEliminar.dni || "No registrado"}
+                  </p>
+                </div>
+              </div>
+
+              {errorEliminar && (
+                <div
+                  className="admin-alert admin-alert--error"
+                  role="alert"
+                  style={{ marginTop: "14px", marginBottom: 0 }}
+                >
+                  {errorEliminar}
+                </div>
+              )}
+
+              <div
+                className="admin-modal-actions"
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                }}
+              >
+                <button
+                  type="button"
+                  disabled={eliminando}
+                  onClick={cerrarModalEliminar}
+                  className="admin-secondary-button"
+                >
+                  Cancelar
+                </button>
+
+                <button
+                  type="button"
+                  disabled={eliminando}
+                  onClick={confirmarEliminar}
+                  className="admin-danger-button"
+                >
+                  {eliminando ? "Eliminando..." : "Sí, eliminar"}
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+      )}
+    </main>
   );
 };
 
 export default Clientes;
+
+
